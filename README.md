@@ -119,7 +119,6 @@ OCR с предобработкой изображения (контраст, б
 💬 Автор
 
 Разработал: Vortales
-Для: Albion Online Market Automation
 Год: 2025
 
 ---
