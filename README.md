@@ -1,127 +1,92 @@
-# **Автоматизация продаж на рынке в Albion Online**  
+[![Build Windows Executable](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/actions/workflows/main.yml/badge.svg)](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/actions/workflows/main.yml) ![Downloads](https://img.shields.io/github/downloads/NobodySan97/AlbionOnline-AutoMarketSeller/total?style=for-the-badge&logo=github&color=green)
 
-Этот скрипт автоматически распознаёт цены и средние значения на экране, сравнивает их и выставляет свою цену (например, на 10% ниже), экономя тебе время при торговле в игре.
+# **Albion Online - Auto Market Seller**
 
----
-
-![САМА ПРОДАЖА (online-video-cutter com)](https://github.com/user-attachments/assets/15fd29a4-69f5-4ccb-aaad-f89a4522d874)
+This script automates the process of selling items on the Albion Online market. It automatically recognizes prices and average values on the screen, compares them, and sets your price (e.g., 10% lower), saving you time while trading in the game.
 
 ---
 
-## 🎯 Что делает скрипт?
-
-- ✅ **Распознаёт числа с экрана** (цена, средняя цена) с помощью OCR
-- ✅ Поддержка суффиксов: `k`, `K`, `m`, `M`, `t`, `T` (например: `686k` = 686 000)
-- ✅ Автоматически **выставляет цену** (по умолчанию 90% от первого числа или средней)
-- ✅ **Калибровка под любое разрешение экрана** (через F1)
-- ✅ Гибкая настройка через `auto_config.json`
-- ✅ Умная логика: если числа сильно отличаются — запускает точное распознавание
-- ✅ Полноценный GUI с логами в реальном времени
-  
----
-
-> ⚠️ **Важно**: Это **не чит** и не взаимодействует с API игры. Скрипт только **эмулирует клики и ввод с клавиатуры**, как будто это делаешь ты сам.
-
-## 🚀 Установка и запуск
-
-1. Скачайте исполняющий файл из раздела [Releases](https://github.com/Vortales/AlbionOnline-AutoMarketSeller/releases)
-2. Скачайте и установите [Tesseract OCR](https://sourceforge.net/projects/tesseract-ocr.mirror/files/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe/download) с поддержкой английского языка
-3. Распакуйте и запусти `AutoMarketSeller.exe`
-4. Нажмите **F1** для калибровки
-5. Нажмите **F4** для запуска
-
-> ✅ Не требует Python, работает на любом ПК с Windows
+![DEMO GIF](https://github.com/user-attachments/assets/15fd29a4-69f5-4ccb-aaad-f89a4522d874)
 
 ---
 
-🔧 Убедись, что установлен Tesseract OCR по данному пути:
-C:\Program Files\Tesseract-OCR\tesseract.exe
+## 🎯 What does the script do?
+
+- ✅ **Recognizes numbers from the screen** (price, average price) using OCR.
+- ✅ Supports suffixes: `k`, `K`, `m`, `M`, `t`, `T` (e.g., `686k` = 686,000).
+- ✅ Automatically **sets the price** (defaults to 90% of the first number or the average).
+- ✅ **Calibration for any screen resolution** (via the F1 key).
+- ✅ Flexible configuration through `auto_config.json`.
+- ✅ Smart logic: if the numbers differ significantly, it runs a more accurate recognition to avoid errors.
+- ✅ A complete GUI with real-time logs.
 
 ---
 
-🔧 Расшифровка основных параметров auto_config.json
+> ⚠️ **Important**: This is **not a cheat** and does not interact with the game's API. The script only **emulates mouse clicks and keyboard input**, just as if you were doing it yourself.
 
-fallback_ratio — это основной коэффициент, по которому программа выставляет цену. Он применяется почти всегда, даже если цена распознана корректно. Значение меньше 1.0 означает, что программа будет продавать со скидкой (например, на 10% при значении 0.9), чтобы быть конкурентоспособным на рынке и быстрее продать предмет.
+## 🚀 Installation and Setup
 
-max_difference_percent — определяет, насколько сильно могут отличаться две распознанные цены (текущая и средняя), чтобы считаться "близкими". Если разница больше — программа запускает дополнительное, более точное распознавание, чтобы избежать ошибок.
+1.  Download the executable file from the [Releases](https://github.com/Vortales/AlbionOnline-AutoMarketSeller/releases) section.
+2.  Download and install [Tesseract OCR](https://sourceforge.net/projects/tesseract-ocr.mirror/files/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe/download) with support for the English language.
+3.  Unzip the archive and run `AutoMarketSeller.exe`.
+4.  Press **F1** to calibrate.
+5.  Press **F4** to start.
 
-robust_attempts — количество попыток перечитать число при сомнениях. Чем больше значение, тем тщательнее проверка, но дольше процесс. Используется, когда цены сильно отличаются или система не уверена в результате.
-
-min_majority_count — минимальное количество одинаковых результатов среди всех попыток распознавания, чтобы считать число достоверным. Если ни одно число не повторилось достаточное число раз, программа может не использовать результат уточнённого распознавания.
-
-between_clicks — короткая задержка между кликами по кнопкам. Имитирует естественную паузу между действиями человека.
-
-after_recognition — небольшая пауза после успешного распознавания числа. Даёт системе "время на реакцию", как будто игрок смотрит на результат.
-
-before_input — задержка перед вводом цены в поле. Создаёт эффект "подготовки к вводу".
-
-after_input — более длинная пауза после ввода цены, перед тем как нажать "Сделать заказ". Имитирует проверку перед подтверждением.
-
-between_cycles — пауза между полными циклами продажи. Позволяет системе "отдохнуть" и предотвращает слишком быстрое повторение действий.
-
-robust_recognition — очень короткая задержка между попытками перечтения числа при уточнённом распознавании. Делает процесс более плавным и менее нагрузочным для системы.
-
-Все задержки (sleep) случайные в заданном диапазоне — это имитирует поведение живого игрока и снижает риск детекта бота.
+> ✅ It does not require Python and works on any Windows PC.
 
 ---
 
-🎮 Управление
-
-F1
-Режим калибровки (ПКМ по элементам интерфейса)
-
-F2
-Тест: распознать "Цену"
-
-F3
-Тест: распознать "Среднюю цену"
-
-F4
-Запуск / Остановка основного цикла
-
-F5
-Остановка текущего цикла (не всей программы)
-
-Esc
-Полная остановка программы
+🔧 Make sure that Tesseract OCR is installed at the following path:
+`C:\Program Files\Tesseract-OCR\tesseract.exe`
 
 ---
 
-🧰 Технологии
+### 🔧 Explanation of `auto_config.json` Parameters
 
-Python + pyautogui, pytesseract, PIL, OpenCV, pynput, tkinter \
-OCR с предобработкой изображения (контраст, бинаризация, увеличение) \
-Многопоточный GUI с логированием \
-Динамическая калибровка под любое разрешение 
-
----
-
-⚙️ Как настроить (провести калибровку при первом запуске)
-
-1. Запустите программу и нажмите кнопку F1
-2. Откройте маркет, наведите курсор на вкладку "Продать" и нажмите ПКМ \
-![1](https://github.com/user-attachments/assets/144d5150-703d-4de2-b003-fe212e938e0b) \
-3. Разверните области с "Заказы на продажу" и "Заказы на покупку", наведите курсор на "Заказ на продажу" и нажмите ПКМ \
-![2](https://github.com/user-attachments/assets/c4b7694b-fbd0-4dbb-b657-171d1ba4bafe) \
-4.Наведите курсор мыши на область "Цена" и нажмите ПКМ \
-![3](https://github.com/user-attachments/assets/ce282b8b-0471-405d-ae78-b31f3e0e164c) \
-5.Наведите курсор на область кнопку "Следать заказ" и нажмите ПКМ \
-![4](https://github.com/user-attachments/assets/50f17a82-b640-43a8-ae05-47563bddffe8) \
-6.Заново откройте окно с предметом и кнопкой Shift выделите область распознавания цены, затем нажмите ПКМ \
-![5](https://github.com/user-attachments/assets/70404df8-7498-4a91-a90b-85faa8f9f5fb) \
-7.Кнопкой Shift выделите область распознавания средней цены, затем нажмите ПКМ \
-![Распознавание сердней цены (online-video-cutter com)](https://github.com/user-attachments/assets/853bf0b9-f340-4b66-906d-dab621d32cb0)
-
-
-Примечание: После калиброки перезапустите программу!!!
----
-
-💬 Автор
-
-Разработал: Vortales
-Год: 2025
+* **fallback_ratio**: The main coefficient the program uses to set the price. It's almost always applied. A value less than 1.0 means the program will sell at a discount (e.g., 10% off with a value of 0.9) to be competitive and sell items faster.
+* **max_difference_percent**: Determines how much the two recognized prices (current and average) can differ to be considered "close". If the difference is greater, the program runs a more precise recognition to avoid errors.
+* **robust_attempts**: The number of attempts to re-read a number when in doubt. A higher value means a more thorough check, but a slower process.
+* **min_majority_count**: The minimum number of identical results among all recognition attempts required to consider a number valid.
+* **sleep (various)**: The delays (sleep) between actions are randomized within a set range to simulate human behavior and reduce the risk of bot detection.
 
 ---
 
+### 🎮 Controls
 
+| Key | Action |
+| :--- | :--- |
+| **F1** | **Calibration Mode** (Right-click on interface elements) |
+| **F2** | Test: Recognize "Price" |
+| **F3** | Test: Recognize "Average Price" |
+| **F4** | **Start / Stop** the main cycle |
+| **F5** | Stop the current cycle only (not the whole program) |
+| **Esc** | Exit the program completely |
 
+---
+
+### 🧰 Tech Stack
+
+Python + pyautogui, pytesseract, PIL, OpenCV, pynput, tkinter.
+OCR with image preprocessing (contrast, binarization, scaling).
+Multi-threaded GUI with logging.
+Dynamic calibration for any resolution.
+
+---
+
+### ⚙️ How to Calibrate (on first launch)
+
+1.  Run the program and press the **F1** key.
+2.  Open the market, move your cursor over the "Sell" tab, and **Right-Click**.
+3.  Expand the "Sell Orders" and "Buy Orders" sections, move your cursor over "Sell Order", and **Right-Click**.
+4.  Move your cursor over the "Price" input field and **Right-Click**.
+5.  Move your cursor over the "Create Order" button and **Right-Click**.
+6.  Reopen the item window, then press and hold **SHIFT** while dragging to select the price recognition area, then **Right-Click** to confirm.
+7.  Press and hold **SHIFT** while dragging to select the average price area, then **Right-Click** to confirm.
+
+**Note: Please restart the program after calibration!**
+---
+
+### 💬 Author
+
+Developed by: **Vortales**
+Year: 2025
