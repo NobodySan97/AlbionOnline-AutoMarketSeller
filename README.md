@@ -26,7 +26,7 @@ This script automates the process of selling items on the Albion Online market. 
 
 ## 🚀 Installation and Setup
 
-1.  Download the executable file from the [Releases](https://github.com/Vortales/AlbionOnline-AutoMarketSeller/releases) section.
+1.  Download the executable file from the [Releases](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/releases) section.
 2.  Download and install [Tesseract OCR](https://sourceforge.net/projects/tesseract-ocr.mirror/files/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe/download) with support for the English language.
 3.  Unzip the archive and run `AutoMarketSeller.exe`.
 4.  Press **F1** to calibrate.
@@ -88,5 +88,5 @@ Dynamic calibration for any resolution.
 
 ### 💬 Author
 
-Developed by: **Vortales**
+Developed by: **NobodySan97**
 Year: 2025

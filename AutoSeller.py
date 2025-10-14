@@ -18,85 +18,14 @@ from collections import Counter
 
 # STRUTTURA DATI MULTILINGUA
 STRINGS = {
-    "it": {
-        "app_title": "🤖 Auto Market Seller v1.0",
-        "log_title": "📋 Log di Lavoro dell'Algoritmo",
-        "status_ready": "Stato: Pronto",
-        "status_running": "Stato: In Esecuzione",
-        "status_paused": "Stato: In Pausa",
-        "status_calibrating": "Stato: Calibrazione...",
-        "author_label": "Autore: NobodySan Credit To Vortales",
-        "resolution_label": "Risoluzione: {}x{}",
-        "menu_file": "File",
-        "menu_cal_full": "Avvia Calibrazione Completa (F1)",
-        "menu_cal_single": "Calibra Elemento",
-        "menu_save_config": "Salva Configurazione",
-        "menu_exit": "Esci",
-        "menu_help": "Aiuto",
-        "menu_guide": "Guida",
-        "menu_language": "Lingua",
-        "controls_title": " Pannello di Controllo ",
-        "logic_title": " Impostazioni Logiche ",
-        "button_start": "▶ Avvia (F4)",
-        "button_stop": "■ Ferma (F4)",
-        "label_fallback_ratio": "Rapporto di Sconto (% del prezzo):",
-        "label_max_diff": "Differenza Massima Prezzi (%):",
-        "info_config_loaded": "✅ Configurazione caricata dal file.",
-        "info_config_saved": "💾 Configurazione salvata.",
-        "info_no_config": "ℹ️ File di configurazione non trovato. Verrà creato con i valori predefiniti.",
-        "error_load_config": "❌ Errore nel caricamento della configurazione: {}",
-        "error_save_config": "❌ Impossibile salvare la configurazione: {}",
-        "log_ready": "🎯 Pronto per l'uso.",
-        "log_cal_start": "🔧 Modalità di calibrazione avviata.",
-        "log_cal_hint": "ℹ️ Segui le istruzioni nella finestra in alto. Premi 'Esc' per annullare.",
-        "log_cal_done": "✅ Calibrazione completata! Configurazione salvata.",
-        "log_cal_cancel": "❌ Calibrazione annullata dall'utente.",
-        "log_cal_point_saved": "📍 {} salvato: ({:.2f}%, {:.2f}%)",
-        "log_cal_area_saved": "✅ {} salvata: {:.2f}%, {:.2f}% -> {:.2f}%, {:.2f}%",
-        "log_main_start": "🚀 Ciclo di vendita avviato. Premi F4 per fermare.",
-        "log_main_stop_user": "🛑 Ciclo di vendita fermato dall'utente (F4).",
-        "log_cycle_stop_user": "🛑 Ciclo corrente fermato dall'utente (F5).",
-        "log_test_price": "Test 'Prezzo': {:,}",
-        "log_test_price_fail": "❌ Test 'Prezzo': Riconoscimento fallito.",
-        "log_test_avg_price": "Test 'Prezzo Medio': {:,}",
-        "log_test_avg_price_fail": "❌ Test 'Prezzo Medio': Riconoscimento fallito.",
-        "cal_instruction_point": "Fai clic con il TASTO DESTRO su:\n'{}'",
-        "cal_instruction_area": "Tieni premuto MAIUSC e trascina per selezionare l'area di:\n'{}'\n\n(Rilascia e fai clic con il TASTO DESTRO per confermare)",
-        "ocr_raw_result": "Raw OCR result from {}: '{}'",
-        "ocr_robust_attempt": "Robust OCR attempt {}: '{}'",
-        "ocr_no_valid_results": "❌ Tutti i tentativi di riconoscimento sono falliti.",
-        "ocr_majority_found": "✅ Corrispondenze sufficienti: {:,} (trovato {} volte)",
-        "ocr_majority_fail": "⚠️ Corrispondenze insufficienti: {:,} ({} volte), necessarie ≥ {}",
-        "main_num1_ok": "Primo numero: {:,}",
-        "main_num1_fail": "❌ Impossibile riconoscere il primo numero.",
-        "main_num2_fail": "❌ Impossibile riconoscere il secondo numero. Salto l'iterazione.",
-        "main_num2_ok": "Secondo numero: {:,}",
-        "main_fallback": "→ Fallback: {:.0f}% del secondo numero → {:,}",
-        "main_diff_check": "I numeri differiscono >{}%. Avvio del raffinamento preciso...",
-        "main_refined1_ok": "🔍 Primo numero raffinato: {:,}",
-        "main_refined1_fail": "⚠️ Impossibile raffinare il primo numero. Uso quello originale.",
-        "main_refined2_ok": "🔍 Secondo numero raffinato: {:,}",
-        "main_result_from_refined": "→ Risultato: {:.0f}% del primo numero scelto = {:,}",
-        "main_result_from_close": "→ I numeri sono simili. Risultato: {:.0f}% del primo = {:,}",
-        "main_value_entered": "✅ Valore inserito: {:,}",
-        "main_critical_error": "Errore critico nel ciclo principale: {}",
-        "region_map": {
-            "sell_button": "Pulsante 'Vendi'",
-            "order_button": "Pulsante 'Ordine di vendita'",
-            "price_input": "Campo di input 'Prezzo'",
-            "submit_button": "Pulsante 'Crea ordine'",
-            "price_value": "Area 'Prezzo Attuale'",
-            "average_price": "Area 'Prezzo Medio'"
-        }
-    },
     "en": {
-        "app_title": "🤖 Auto Market Seller v1.0",
+        "app_title": "🤖 Auto Market Seller v1.1 (Improved OCR)",
         "log_title": "📋 Algorithm Work Log",
         "status_ready": "Status: Ready",
         "status_running": "Status: Running",
         "status_paused": "Status: Paused",
         "status_calibrating": "Status: Calibrating...",
-        "author_label": "Author: Vortales",
+        "author_label": "Author: NobodySan97",
         "resolution_label": "Resolution: {}x{}",
         "menu_file": "File",
         "menu_cal_full": "Start Full Calibration (F1)",
@@ -134,6 +63,7 @@ STRINGS = {
         "cal_instruction_point": "RIGHT-CLICK on:\n'{}'",
         "cal_instruction_area": "Hold SHIFT and drag to select the area of:\n'{}'\n\n(Release and RIGHT-CLICK to confirm)",
         "ocr_raw_result": "Raw OCR result from {}: '{}'",
+        "ocr_robust_start": "🔍 Starting robust recognition ({} attempts)...",
         "ocr_robust_attempt": "Robust OCR attempt {}: '{}'",
         "ocr_no_valid_results": "❌ All recognition attempts failed.",
         "ocr_majority_found": "✅ Sufficient matches: {:,} (found {} times)",
@@ -159,6 +89,78 @@ STRINGS = {
             "price_value": "Current Price Area",
             "average_price": "Average Price Area"
         }
+    },
+    "it": {
+        "app_title": "🤖 Auto Market Seller v1.1 (OCR Migliorato)",
+        "log_title": "📋 Log di Lavoro dell'Algoritmo",
+        "status_ready": "Stato: Pronto",
+        "status_running": "Stato: In Esecuzione",
+        "status_paused": "Stato: In Pausa",
+        "status_calibrating": "Stato: Calibrazione...",
+        "author_label": "Autore: NobodySan97",
+        "resolution_label": "Risoluzione: {}x{}",
+        "menu_file": "File",
+        "menu_cal_full": "Avvia Calibrazione Completa (F1)",
+        "menu_cal_single": "Calibra Elemento",
+        "menu_save_config": "Salva Configurazione",
+        "menu_exit": "Esci",
+        "menu_help": "Aiuto",
+        "menu_guide": "Guida",
+        "menu_language": "Lingua",
+        "controls_title": " Pannello di Controllo ",
+        "logic_title": " Impostazioni Logiche ",
+        "button_start": "▶ Avvia (F4)",
+        "button_stop": "■ Ferma (F4)",
+        "label_fallback_ratio": "Rapporto di Sconto (% del prezzo):",
+        "label_max_diff": "Differenza Massima Prezzi (%):",
+        "info_config_loaded": "✅ Configurazione caricata dal file.",
+        "info_config_saved": "💾 Configurazione salvata.",
+        "info_no_config": "ℹ️ File di configurazione non trovato. Verrà creato con i valori predefiniti.",
+        "error_load_config": "❌ Errore nel caricamento della configurazione: {}",
+        "error_save_config": "❌ Impossibile salvare la configurazione: {}",
+        "log_ready": "🎯 Pronto per l'uso.",
+        "log_cal_start": "🔧 Modalità di calibrazione avviata.",
+        "log_cal_hint": "ℹ️ Segui le istruzioni nella finestra in alto. Premi 'Esc' per annullare.",
+        "log_cal_done": "✅ Calibrazione completata! Configurazione salvata.",
+        "log_cal_cancel": "❌ Calibrazione annullata dall'utente.",
+        "log_cal_point_saved": "📍 {} salvato: ({:.2f}%, {:.2f}%)",
+        "log_cal_area_saved": "✅ {} salvata: {:.2f}%, {:.2f}% -> {:.2f}%, {:.2f}%",
+        "log_main_start": "🚀 Ciclo di vendita avviato. Premi F4 per fermare.",
+        "log_main_stop_user": "🛑 Ciclo di vendita fermato dall'utente (F4).",
+        "log_cycle_stop_user": "🛑 Ciclo corrente fermato dall'utente (F5).",
+        "log_test_price": "Test 'Prezzo': {:,}",
+        "log_test_price_fail": "❌ Test 'Prezzo': Riconoscimento fallito.",
+        "log_test_avg_price": "Test 'Prezzo Medio': {:,}",
+        "log_test_avg_price_fail": "❌ Test 'Prezzo Medio': Riconoscimento fallito.",
+        "cal_instruction_point": "Fai clic con il TASTO DESTRO su:\n'{}'",
+        "cal_instruction_area": "Tieni premuto MAIUSC e trascina per selezionare l'area di:\n'{}'\n\n(Rilascia e fai clic con il TASTO DESTRO per confermare)",
+        "ocr_raw_result": "Raw OCR result from {}: '{}'",
+        "ocr_robust_start": "🔍 Avvio riconoscimento robusto ({} tentativi)...",
+        "ocr_robust_attempt": "Robust OCR attempt {}: '{}'",
+        "ocr_no_valid_results": "❌ Tutti i tentativi di riconoscimento sono falliti.",
+        "ocr_majority_found": "✅ Corrispondenze sufficienti: {:,} (trovato {} volte)",
+        "ocr_majority_fail": "⚠️ Corrispondenze insufficienti: {:,} ({} volte), necessarie ≥ {}",
+        "main_num1_ok": "Primo numero: {:,}",
+        "main_num1_fail": "❌ Impossibile riconoscere il primo numero.",
+        "main_num2_fail": "❌ Impossibile riconoscere il secondo numero. Salto l'iterazione.",
+        "main_num2_ok": "Secondo numero: {:,}",
+        "main_fallback": "→ Fallback: {:.0f}% del secondo numero → {:,}",
+        "main_diff_check": "I numeri differiscono >{}%. Avvio del raffinamento preciso...",
+        "main_refined1_ok": "🔍 Primo numero raffinato: {:,}",
+        "main_refined1_fail": "⚠️ Impossibile raffinare il primo numero. Uso quello originale.",
+        "main_refined2_ok": "🔍 Secondo numero raffinato: {:,}",
+        "main_result_from_refined": "→ Risultato: {:.0f}% del primo numero scelto = {:,}",
+        "main_result_from_close": "→ I numeri sono simili. Risultato: {:.0f}% del primo = {:,}",
+        "main_value_entered": "✅ Valore inserito: {:,}",
+        "main_critical_error": "Errore critico nel ciclo principale: {}",
+        "region_map": {
+            "sell_button": "Pulsante 'Vendi'",
+            "order_button": "Pulsante 'Ordine di vendita'",
+            "price_input": "Campo di input 'Prezzo'",
+            "submit_button": "Pulsante 'Crea ordine'",
+            "price_value": "Area 'Prezzo Attuale'",
+            "average_price": "Area 'Prezzo Medio'"
+        }
     }
 }
 
@@ -176,11 +178,10 @@ class AutoMarketSeller:
         self.log_queue = []
         self.log_lock = threading.Lock()
         
-        # Variabili per la visualizzazione della selezione
         self.selection_overlay = None
         self.selection_canvas = None
         
-        # Imposta una lingua di default per i log iniziali
+        # **Default language set to English**
         self.lang = "en"
         self.strings = STRINGS[self.lang]
 
@@ -189,7 +190,7 @@ class AutoMarketSeller:
         self.config = self._get_default_config()
         self.load_config()
 
-        # Imposta la lingua finale dalla configurazione e costruisce la GUI
+        # Final language is set from config, but will default to English
         self.set_language(self.config.get("language", "en"), save=False)
 
         self.mouse_listener = None
@@ -199,20 +200,20 @@ class AutoMarketSeller:
 
     def set_language(self, lang_code, save=False):
         self.lang = lang_code
-        self.strings = STRINGS.get(lang_code, STRINGS["it"]) # Fallback a IT se la lingua non esiste
-
-        # Ricostruisce l'interfaccia utente con la nuova lingua
+        # **Fallback language is now English**
+        self.strings = STRINGS.get(lang_code, STRINGS["en"]) 
+        
         for widget in self.root.winfo_children():
             widget.destroy()
         self.setup_gui() 
         self.update_gui_from_config()
-
-        # Salva la configurazione solo se l'azione è stata avviata dall'utente (es. menu)
+        
         if save:
             self.config["language"] = lang_code
             self.save_config()
 
     def _get_default_config(self):
+        # **Default config language is English**
         return {
             "language": "en",
             "regions": { "sell_button": {"x": 0, "y": 0}, "order_button": {"x": 0, "y": 0}, "price_input": {"x": 0, "y": 0}, "submit_button": {"x": 0, "y": 0}, "price_value": {"x1": 0, "y1": 0, "x2": 0, "y2": 0}, "average_price": {"x1": 0, "y1": 0, "x2": 0, "y2": 0}},
@@ -226,7 +227,6 @@ class AutoMarketSeller:
             try:
                 with open(self.CONFIG_FILE, 'r') as f:
                     loaded_config = json.load(f)
-                    # Unisce la configurazione caricata a quella di default in modo robusto
                     for key, value in loaded_config.items():
                         if key in self.config and isinstance(self.config[key], dict) and isinstance(value, dict):
                             self.config[key].update(value)
@@ -252,8 +252,6 @@ class AutoMarketSeller:
         default_font = tkfont.nametofont("TkDefaultFont"); default_font.configure(family="Segoe UI", size=10)
         
         menu_bar = tk.Menu(self.root)
-        
-        # --- File Menu ---
         file_menu = tk.Menu(menu_bar, tearoff=0)
         file_menu.add_command(label=self.strings["menu_cal_full"], command=self.start_full_calibration)
         cal_single_menu = tk.Menu(file_menu, tearoff=0)
@@ -265,13 +263,12 @@ class AutoMarketSeller:
         file_menu.add_command(label=self.strings["menu_exit"], command=self.on_closing)
         menu_bar.add_cascade(label=self.strings["menu_file"], menu=file_menu)
         
-        # --- Language Menu ---
         lang_menu = tk.Menu(menu_bar, tearoff=0)
-        for lang_code, lang_name in {"it": "Italiano", "en": "English"}.items():
+        # Corrected language menu to show correct names
+        for lang_code, lang_name in {"en": "English", "it": "Italiano"}.items():
             lang_menu.add_command(label=lang_name, command=lambda lc=lang_code: self.set_language(lc, save=True))
         menu_bar.add_cascade(label=self.strings["menu_language"], menu=lang_menu)
 
-        # --- Help Menu ---
         help_menu = tk.Menu(menu_bar, tearoff=0)
         help_menu.add_command(label=self.strings["menu_guide"], command=self.show_help)
         menu_bar.add_cascade(label=self.strings["menu_help"], menu=help_menu)
@@ -299,7 +296,7 @@ class AutoMarketSeller:
     def update_status_label(self, text_key, color):
         self.status_label.config(text=self.strings[text_key], fg=color)
 
-    def show_help(self): messagebox.showinfo(self.strings["menu_guide"], "F1: Start Full Calibration\nF2: Test Current Price\nF3: Test Average Price\nF4: Start/Stop cycle\nF5: Stop current cycle\nEsc: Cancel calibration")
+    def show_help(self): messagebox.showinfo(self.strings["menu_guide"], "F1: Start Full Calibration\nF2: Test Current Price\nF3: Test Average Price\nF4: Start/Stop cycle\nF5: Stop current cycle\nEsc: Cancel calibration / Exit")
     
     def log_message(self, level, message):
         with self.log_lock: self.log_queue.append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] {level.upper()}: {message}")
@@ -375,13 +372,19 @@ class AutoMarketSeller:
         if cancelled: self.log_message("CALIBRATE", self.strings["log_cal_cancel"])
         else: self.save_config(); self.log_message("CALIBRATE", self.strings["log_cal_done"])
 
+    def handle_esc_key(self):
+        if self.calibration_active:
+            self.finish_calibration(cancelled=True)
+        else:
+            self.on_closing()
+
     def setup_hotkeys(self):
         keyboard.add_hotkey('f1', self.start_full_calibration)
         keyboard.add_hotkey('f2', self.test_price_recognition)
         keyboard.add_hotkey('f3', self.test_average_price_recognition)
         keyboard.add_hotkey('f4', self.toggle_main_loop)
         keyboard.add_hotkey('f5', lambda: (self.current_loop_stop_flag.set(), self.log_message("STOP", self.strings["log_cycle_stop_user"])))
-        keyboard.add_hotkey('esc', lambda: self.finish_calibration(cancelled=True) if self.calibration_active else None)
+        keyboard.add_hotkey('esc', self.handle_esc_key)
 
     def test_price_recognition(self):
         if self.main_loop_running or self.calibration_active: return
@@ -398,10 +401,8 @@ class AutoMarketSeller:
     def start_input_listeners(self):
         def on_move(x, y):
             if not self.calibration_active: return
-
             current_region_key = self.calibration_regions[self.calibration_step]
             is_area = "1" in list(self.config["regions"][current_region_key].keys())[0]
-
             if is_area and keyboard.is_pressed('shift'):
                 if self.drag_start_point is None:
                     self.drag_start_point = (x, y)
@@ -411,19 +412,16 @@ class AutoMarketSeller:
             elif self.drag_start_point is not None:
                 self._destroy_selection_overlay()
                 self.drag_start_point = None
-
         self.mouse_listener = mouse.Listener(on_click=self.handle_calibration_click, on_move=on_move)
         self.mouse_listener.start()
-    
-    # --- NUOVE FUNZIONI PER LA VISUALIZZAZIONE DELLA SELEZIONE ---
+
     def _create_selection_overlay(self):
         if self.selection_overlay: return
         self.selection_overlay = tk.Toplevel(self.root)
-        self.selection_overlay.attributes("-alpha", 0.3) # Opacità
+        self.selection_overlay.attributes("-alpha", 0.3)
         self.selection_overlay.attributes("-topmost", True)
-        self.selection_overlay.overrideredirect(True) # Senza bordi
+        self.selection_overlay.overrideredirect(True)
         self.selection_overlay.geometry(f"{self.screen_width}x{self.screen_height}+0+0")
-        
         self.selection_canvas = tk.Canvas(self.selection_overlay, bg="white", highlightthickness=0)
         self.selection_canvas.pack(fill=tk.BOTH, expand=True)
         self.selection_overlay.wm_attributes("-transparentcolor", "white")
@@ -440,7 +438,6 @@ class AutoMarketSeller:
             self.selection_overlay.destroy()
             self.selection_overlay = None
             self.selection_canvas = None
-    # --- FINE NUOVE FUNZIONI ---
 
     def toggle_main_loop(self):
         if self.calibration_active: return
@@ -461,102 +458,127 @@ class AutoMarketSeller:
         sleep_config = self.config["sleep"].get(action, {"min": 0.05, "max": 0.05})
         return random.uniform(sleep_config["min"], sleep_config["max"])
 
-    def _preprocess_image(self, image):
-        image = image.convert('L'); enhancer = ImageEnhance.Contrast(image); image = enhancer.enhance(2.0)
-        image_np = np.array(image); _, image_np = cv2.threshold(image_np, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        width, height = int(image_np.shape[1]*2), int(image_np.shape[0]*2)
-        image_np = cv2.resize(image_np, (width, height), interpolation=cv2.INTER_CUBIC); return Image.fromarray(image_np)
-
     def _parse_number(self, text):
         if not text: return None
         text = re.sub(r'[а-яА-Я\s]', '', text).upper().rstrip('.')
         match = re.search(r'([\d.,]+)([MTK])?', text)
         if not match: return None
         number_str, suffix = match.groups()
-        
         try:
             if ',' in number_str and '.' in number_str:
-                if number_str.rfind(',') < number_str.rfind('.'):
-                    number_str = number_str.replace(',', '')
-                else:
-                    number_str = number_str.replace('.', '').replace(',', '.')
+                if number_str.rfind(',') < number_str.rfind('.'): number_str = number_str.replace(',', '')
+                else: number_str = number_str.replace('.', '').replace(',', '.')
             elif ',' in number_str:
-                if len(number_str.split(',')[-1]) == 3:
-                     number_str = number_str.replace(',', '')
-                else:
-                     number_str = number_str.replace(',', '.')
+                if len(number_str.split(',')[-1]) == 3: number_str = number_str.replace(',', '')
+                else: number_str = number_str.replace(',', '.')
             
             number = float(number_str)
             if suffix == 'M': number *= 1_000_000
             elif suffix in ['T', 'K']: number *= 1_000
             return int(number)
-        except (ValueError, TypeError): 
-            return None
+        except (ValueError, TypeError): return None
 
     def _recognize_number(self, region_name, use_robust=False):
-        if use_robust: return self._robust_recognize_number(region_name)
-        try:
-            x1, y1, x2, y2 = self._get_absolute_coords(region_name)
-            img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
-            processed = self._preprocess_image(img)
-            text = pytesseract.image_to_string(processed, config=f'--psm 7 -c tessedit_char_whitelist={self.config["ocr"]["whitelist_digits"]}').strip()
-            self.log_message("DEBUG", self.strings["ocr_raw_result"].format(region_name, text))
-            return self._parse_number(text)
-        except Exception: return None
+        return self._robust_recognize_number(region_name)
 
     def _robust_recognize_number(self, region_name):
-        results = []; 
-        for i in range(self.config["logic"]["robust_attempts"]):
+        results = []
+        attempts = self.config["logic"]["robust_attempts"]
+        
+        configs = ['--psm 6', '--psm 7', '--psm 8', '--psm 13']
+        contrasts = [1.5, 2.0, 2.5, 3.0]
+        use_otsu_options = [True, False]
+        scales = [150, 200, 250]
+
+        self.log_message("INFO", self.strings["ocr_robust_start"].format(attempts))
+        
+        for i in range(attempts):
             try:
-                x1, y1, x2, y2 = self._get_absolute_coords(region_name); img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
-                text = pytesseract.image_to_string(self._preprocess_image(img), config=f'--psm 7 -c tessedit_char_whitelist={self.config["ocr"]["whitelist_digits"]}').strip()
+                x1, y1, x2, y2 = self._get_absolute_coords(region_name)
+                img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
+                
+                image = img.convert('L')
+                contrast = contrasts[i % len(contrasts)]
+                enhancer = ImageEnhance.Contrast(image)
+                image = enhancer.enhance(contrast)
+                image_np = np.array(image)
+                
+                if use_otsu_options[i % len(use_otsu_options)]:
+                    _, image_np = cv2.threshold(image_np, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                else:
+                    _, image_np = cv2.threshold(image_np, 127, 255, cv2.THRESH_BINARY)
+                
+                scale = scales[i % len(scales)]
+                width = int(image_np.shape[1] * scale / 100)
+                height = int(image_np.shape[0] * scale / 100)
+                image_np = cv2.resize(image_np, (width, height), interpolation=cv2.INTER_CUBIC)
+                processed = Image.fromarray(image_np)
+                
+                config = configs[i % len(configs)] + f' -c tessedit_char_whitelist={self.config["ocr"]["whitelist_digits"]}'
+                text = pytesseract.image_to_string(processed, config=config).strip()
+                
                 self.log_message("DEBUG", self.strings["ocr_robust_attempt"].format(i + 1, text))
                 results.append(self._parse_number(text))
-            except Exception: results.append(None)
+            except Exception:
+                results.append(None)
             time.sleep(self._get_random_sleep("robust_recognition"))
-        valid_results = [r for r in results if r is not None]
-        if not valid_results: self.log_message("ERROR", self.strings["ocr_no_valid_results"]); return None
-        counter = Counter(valid_results); most_common, count = counter.most_common(1)[0]
-        min_count = self.config["logic"]["min_majority_count"]
-        if count >= min_count: self.log_message("SUCCESS", self.strings["ocr_majority_found"].format(most_common, count)); return most_common
-        else: self.log_message("WARNING", self.strings["ocr_majority_fail"].format(most_common, count, min_count)); return None
 
+        valid_results = [r for r in results if r is not None]
+        if not valid_results:
+            self.log_message("ERROR", self.strings["ocr_no_valid_results"])
+            return None
+            
+        counter = Counter(valid_results)
+        most_common, count = counter.most_common(1)[0]
+        min_count = self.config["logic"]["min_majority_count"]
+
+        if count >= min_count:
+            self.log_message("SUCCESS", self.strings["ocr_majority_found"].format(most_common, count))
+            return most_common
+        else:
+            self.log_message("WARNING", self.strings["ocr_majority_fail"].format(most_common, count, min_count))
+            return None
+    
     def run_main_loop(self):
         while not self.current_loop_stop_flag.is_set():
             try:
                 pyautogui.click(self._get_absolute_coords("sell_button")); time.sleep(self._get_random_sleep("between_clicks"))
                 pyautogui.click(self._get_absolute_coords("order_button")); time.sleep(self._get_random_sleep("between_clicks"))
-                number1 = self._recognize_number("price_value")
+                
+                number1 = self._robust_recognize_number("price_value") 
                 if number1: self.log_message("SUCCESS", self.strings["main_num1_ok"].format(number1))
                 else: self.log_message("WARNING", self.strings["main_num1_fail"])
-                number2 = self._recognize_number("average_price")
-                if not number2: self.log_message("ERROR", self.strings["main_num2_fail"]); time.sleep(self._get_random_sleep("between_cycles")); continue
+                
+                number2 = self._robust_recognize_number("average_price")
+                if not number2: 
+                    self.log_message("ERROR", self.strings["main_num2_fail"]); time.sleep(self._get_random_sleep("between_cycles")); continue
+                
                 self.log_message("INFO", self.strings["main_num2_ok"].format(number2))
                 self.update_config_from_gui() 
                 fallback_ratio = self.config["logic"]["fallback_ratio"]; result = 0
+
                 if not number1:
                     result = int(number2 * fallback_ratio)
                     self.log_message("FALLBACK", self.strings["main_fallback"].format(fallback_ratio * 100, result))
                 else:
-                    diff_percent = abs(number1 - number2) / max(number1, number2) * 100
+                    diff_percent = abs(number1 - number2) / max(1, number1, number2) * 100
                     if diff_percent > self.config["logic"]["max_difference_percent"]:
                         self.log_message("INFO", self.strings["main_diff_check"].format(self.config["logic"]["max_difference_percent"]))
-                        refined_number1 = self._robust_recognize_number("price_value")
-                        if refined_number1: self.log_message("INFO", self.strings["main_refined1_ok"].format(refined_number1)); number1 = refined_number1
-                        else: self.log_message("WARNING", self.strings["main_refined1_fail"])
-                        self._robust_recognize_number("average_price")
                         result = int(number1 * fallback_ratio)
                         self.log_message("SUCCESS", self.strings["main_result_from_refined"].format(fallback_ratio * 100, result))
                     else:
                         result = int(number1 * fallback_ratio)
                         self.log_message("SUCCESS", self.strings["main_result_from_close"].format(fallback_ratio * 100, result))
+
                 pyautogui.click(self._get_absolute_coords("price_input")); time.sleep(self._get_random_sleep("before_input"))
                 pyautogui.write(str(result)); time.sleep(self._get_random_sleep("between_clicks"))
                 pyautogui.click(self._get_absolute_coords("submit_button")); time.sleep(self._get_random_sleep("after_input"))
                 self.log_message("ACTION", self.strings["main_value_entered"].format(result))
             except Exception as e:
                 self.log_message("ERROR", self.strings["main_critical_error"].format(e))
+            
             time.sleep(self._get_random_sleep("between_cycles"))
+            
         self.main_loop_running = False
         self.root.after(0, lambda: [
             self.start_stop_button.config(text=self.strings["button_start"], bg="#4CAF50"),
@@ -575,9 +597,16 @@ if __name__ == "__main__":
         if not os.path.exists(tesseract_path):
             tesseract_path = r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe'
             if not os.path.exists(tesseract_path):
-                root = tk.Tk(); root.withdraw()
-                messagebox.showerror("Tesseract OCR Error", f"Tesseract not found.\nMake sure it is installed and the path in the script is correct.")
-                os._exit(1)
+                import subprocess
+                try:
+                    tesseract_path = subprocess.check_output("where tesseract", shell=True, text=True).strip()
+                except subprocess.CalledProcessError:
+                    tesseract_path = ""
+                
+                if not os.path.exists(tesseract_path):
+                    root = tk.Tk(); root.withdraw()
+                    messagebox.showerror("Tesseract OCR Error", f"Tesseract not found.\nMake sure it is installed and the path in the script is correct or in your system's PATH.")
+                    os._exit(1)
         pytesseract.pytesseract.tesseract_cmd = tesseract_path
     except Exception as e:
         root = tk.Tk(); root.withdraw()
