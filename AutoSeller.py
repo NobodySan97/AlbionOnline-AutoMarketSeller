@@ -19,7 +19,7 @@ from collections import Counter
 # STRUTTURA DATI MULTILINGUA
 STRINGS = {
     "en": {
-        "app_title": "🤖 Auto Market Seller v1.1 (Improved OCR)",
+        "app_title": "🤖 Auto Market Seller v1.3 (Instant Stop)",
         "log_title": "📋 Algorithm Work Log",
         "status_ready": "Status: Ready",
         "status_running": "Status: Running",
@@ -91,7 +91,7 @@ STRINGS = {
         }
     },
     "it": {
-        "app_title": "🤖 Auto Market Seller v1.1 (OCR Migliorato)",
+        "app_title": "🤖 Auto Market Seller v1.3 (Stop Istantaneo)",
         "log_title": "📋 Log di Lavoro dell'Algoritmo",
         "status_ready": "Stato: Pronto",
         "status_running": "Stato: In Esecuzione",
@@ -181,7 +181,6 @@ class AutoMarketSeller:
         self.selection_overlay = None
         self.selection_canvas = None
         
-        # **Default language set to English**
         self.lang = "en"
         self.strings = STRINGS[self.lang]
 
@@ -190,7 +189,6 @@ class AutoMarketSeller:
         self.config = self._get_default_config()
         self.load_config()
 
-        # Final language is set from config, but will default to English
         self.set_language(self.config.get("language", "en"), save=False)
 
         self.mouse_listener = None
@@ -200,7 +198,6 @@ class AutoMarketSeller:
 
     def set_language(self, lang_code, save=False):
         self.lang = lang_code
-        # **Fallback language is now English**
         self.strings = STRINGS.get(lang_code, STRINGS["en"]) 
         
         for widget in self.root.winfo_children():
@@ -213,7 +210,6 @@ class AutoMarketSeller:
             self.save_config()
 
     def _get_default_config(self):
-        # **Default config language is English**
         return {
             "language": "en",
             "regions": { "sell_button": {"x": 0, "y": 0}, "order_button": {"x": 0, "y": 0}, "price_input": {"x": 0, "y": 0}, "submit_button": {"x": 0, "y": 0}, "price_value": {"x1": 0, "y1": 0, "x2": 0, "y2": 0}, "average_price": {"x1": 0, "y1": 0, "x2": 0, "y2": 0}},
@@ -264,7 +260,6 @@ class AutoMarketSeller:
         menu_bar.add_cascade(label=self.strings["menu_file"], menu=file_menu)
         
         lang_menu = tk.Menu(menu_bar, tearoff=0)
-        # Corrected language menu to show correct names
         for lang_code, lang_name in {"en": "English", "it": "Italiano"}.items():
             lang_menu.add_command(label=lang_name, command=lambda lc=lang_code: self.set_language(lc, save=True))
         menu_bar.add_cascade(label=self.strings["menu_language"], menu=lang_menu)
@@ -401,6 +396,7 @@ class AutoMarketSeller:
     def start_input_listeners(self):
         def on_move(x, y):
             if not self.calibration_active: return
+            if self.calibration_step >= len(self.calibration_regions): return
             current_region_key = self.calibration_regions[self.calibration_step]
             is_area = "1" in list(self.config["regions"][current_region_key].keys())[0]
             if is_area and keyboard.is_pressed('shift'):
@@ -439,15 +435,31 @@ class AutoMarketSeller:
             self.selection_overlay = None
             self.selection_canvas = None
 
+    # ### INIZIO FUNZIONI NUOVE E MODIFICATE PER LO STOP ISTANTANEO ###
     def toggle_main_loop(self):
         if self.calibration_active: return
-        if self.main_loop_running: self.current_loop_stop_flag.set(); self.log_message("STOP", self.strings["log_main_stop_user"])
+        if self.main_loop_running:
+            self.current_loop_stop_flag.set()
+            self.log_message("STOP", self.strings["log_main_stop_user"])
         else:
-            self.main_loop_running = True; self.current_loop_stop_flag.clear()
-            self.main_loop_thread = threading.Thread(target=self.run_main_loop, daemon=True); self.main_loop_thread.start()
+            self.main_loop_running = True
+            self.current_loop_stop_flag.clear()
+            self.main_loop_thread = threading.Thread(target=self.run_main_loop, daemon=True)
+            self.main_loop_thread.start()
             self.log_message("START", self.strings["log_main_start"])
-        self.start_stop_button.config(text=self.strings["button_stop" if self.main_loop_running else "button_start"], bg="#f44336" if self.main_loop_running else "#4CAF50")
-        self.update_status_label("status_running" if self.main_loop_running else "status_ready", "#4CAF50" if self.main_loop_running else "white")
+            self.start_stop_button.config(text=self.strings["button_stop"], bg="#f44336")
+            self.update_status_label("status_running", "#4CAF50")
+            
+    def interruptible_sleep(self, duration):
+        """Pausa che può essere interrotta dal flag di stop."""
+        end_time = time.time() + duration
+        while time.time() < end_time:
+            if self.current_loop_stop_flag.is_set():
+                return True  # Interrotto
+            time.sleep(0.01)  # Controlla ogni 10ms
+        return False  # Completato senza interruzioni
+
+    # ### FINE FUNZIONI NUOVE ###
 
     def _get_absolute_coords(self, region_name):
         region = self.config["regions"][region_name]
@@ -457,6 +469,20 @@ class AutoMarketSeller:
     def _get_random_sleep(self, action):
         sleep_config = self.config["sleep"].get(action, {"min": 0.05, "max": 0.05})
         return random.uniform(sleep_config["min"], sleep_config["max"])
+
+    def _advanced_preprocess_image(self, image):
+        image_np = np.array(image.convert('L'))
+        scale = 3
+        width = int(image_np.shape[1] * scale)
+        height = int(image_np.shape[0] * scale)
+        resized = cv2.resize(image_np, (width, height), interpolation=cv2.INTER_CUBIC)
+        blurred = cv2.GaussianBlur(resized, (5, 5), 0)
+        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+        inverted = cv2.bitwise_not(thresh)
+        kernel = np.ones((2,2),np.uint8)
+        dilated = cv2.dilate(inverted, kernel, iterations = 1)
+        final_image = cv2.bitwise_not(dilated)
+        return Image.fromarray(final_image)
 
     def _parse_number(self, text):
         if not text: return None
@@ -478,50 +504,32 @@ class AutoMarketSeller:
             return int(number)
         except (ValueError, TypeError): return None
 
-    def _recognize_number(self, region_name, use_robust=False):
+    def _recognize_number(self, region_name):
         return self._robust_recognize_number(region_name)
 
     def _robust_recognize_number(self, region_name):
         results = []
         attempts = self.config["logic"]["robust_attempts"]
-        
         configs = ['--psm 6', '--psm 7', '--psm 8', '--psm 13']
-        contrasts = [1.5, 2.0, 2.5, 3.0]
-        use_otsu_options = [True, False]
-        scales = [150, 200, 250]
-
+        
         self.log_message("INFO", self.strings["ocr_robust_start"].format(attempts))
         
         for i in range(attempts):
+            if self.current_loop_stop_flag.is_set(): break
             try:
                 x1, y1, x2, y2 = self._get_absolute_coords(region_name)
                 img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
-                
-                image = img.convert('L')
-                contrast = contrasts[i % len(contrasts)]
-                enhancer = ImageEnhance.Contrast(image)
-                image = enhancer.enhance(contrast)
-                image_np = np.array(image)
-                
-                if use_otsu_options[i % len(use_otsu_options)]:
-                    _, image_np = cv2.threshold(image_np, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                else:
-                    _, image_np = cv2.threshold(image_np, 127, 255, cv2.THRESH_BINARY)
-                
-                scale = scales[i % len(scales)]
-                width = int(image_np.shape[1] * scale / 100)
-                height = int(image_np.shape[0] * scale / 100)
-                image_np = cv2.resize(image_np, (width, height), interpolation=cv2.INTER_CUBIC)
-                processed = Image.fromarray(image_np)
-                
+                processed = self._advanced_preprocess_image(img)
                 config = configs[i % len(configs)] + f' -c tessedit_char_whitelist={self.config["ocr"]["whitelist_digits"]}'
                 text = pytesseract.image_to_string(processed, config=config).strip()
-                
                 self.log_message("DEBUG", self.strings["ocr_robust_attempt"].format(i + 1, text))
                 results.append(self._parse_number(text))
-            except Exception:
+            except Exception as e:
+                self.log_message("ERROR", f"OCR attempt failed: {e}")
                 results.append(None)
-            time.sleep(self._get_random_sleep("robust_recognition"))
+            if self.interruptible_sleep(self._get_random_sleep("robust_recognition")): break
+        
+        if not results: return None
 
         valid_results = [r for r in results if r is not None]
         if not valid_results:
@@ -542,16 +550,23 @@ class AutoMarketSeller:
     def run_main_loop(self):
         while not self.current_loop_stop_flag.is_set():
             try:
-                pyautogui.click(self._get_absolute_coords("sell_button")); time.sleep(self._get_random_sleep("between_clicks"))
-                pyautogui.click(self._get_absolute_coords("order_button")); time.sleep(self._get_random_sleep("between_clicks"))
+                pyautogui.click(self._get_absolute_coords("sell_button"))
+                if self.interruptible_sleep(self._get_random_sleep("between_clicks")): break
+                
+                pyautogui.click(self._get_absolute_coords("order_button"))
+                if self.interruptible_sleep(self._get_random_sleep("between_clicks")): break
                 
                 number1 = self._robust_recognize_number("price_value") 
+                if self.current_loop_stop_flag.is_set(): break
                 if number1: self.log_message("SUCCESS", self.strings["main_num1_ok"].format(number1))
                 else: self.log_message("WARNING", self.strings["main_num1_fail"])
                 
                 number2 = self._robust_recognize_number("average_price")
+                if self.current_loop_stop_flag.is_set(): break
                 if not number2: 
-                    self.log_message("ERROR", self.strings["main_num2_fail"]); time.sleep(self._get_random_sleep("between_cycles")); continue
+                    self.log_message("ERROR", self.strings["main_num2_fail"])
+                    if self.interruptible_sleep(self._get_random_sleep("between_cycles")): break
+                    continue
                 
                 self.log_message("INFO", self.strings["main_num2_ok"].format(number2))
                 self.update_config_from_gui() 
@@ -570,15 +585,22 @@ class AutoMarketSeller:
                         result = int(number1 * fallback_ratio)
                         self.log_message("SUCCESS", self.strings["main_result_from_close"].format(fallback_ratio * 100, result))
 
-                pyautogui.click(self._get_absolute_coords("price_input")); time.sleep(self._get_random_sleep("before_input"))
-                pyautogui.write(str(result)); time.sleep(self._get_random_sleep("between_clicks"))
-                pyautogui.click(self._get_absolute_coords("submit_button")); time.sleep(self._get_random_sleep("after_input"))
+                pyautogui.click(self._get_absolute_coords("price_input"))
+                if self.interruptible_sleep(self._get_random_sleep("before_input")): break
+                
+                pyautogui.write(str(result))
+                if self.interruptible_sleep(self._get_random_sleep("between_clicks")): break
+                
+                pyautogui.click(self._get_absolute_coords("submit_button"))
+                if self.interruptible_sleep(self._get_random_sleep("after_input")): break
+                
                 self.log_message("ACTION", self.strings["main_value_entered"].format(result))
             except Exception as e:
                 self.log_message("ERROR", self.strings["main_critical_error"].format(e))
             
-            time.sleep(self._get_random_sleep("between_cycles"))
-            
+            if self.interruptible_sleep(self._get_random_sleep("between_cycles")): break
+        
+        # Codice eseguito quando il loop finisce (sia per completamento che per interruzione)
         self.main_loop_running = False
         self.root.after(0, lambda: [
             self.start_stop_button.config(text=self.strings["button_start"], bg="#4CAF50"),
