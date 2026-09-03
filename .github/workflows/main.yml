@@ -1,6 +1,10 @@
 name: Build Windows Executable
 
 on:
+  push:
+    tags:
+      - 'v*'
+      - '[0-9]+.*'
   release:
     types: [created, published]
   workflow_dispatch:
@@ -16,33 +20,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Tesseract
+      - name: Install Tesseract via Chocolatey
         run: choco install tesseract-ocr --params "/NoAdmin" -y
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.12'
           cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
+          pip install pyinstaller pytest
 
-      - name: Run PyInstaller
+      - name: Run Test Suite
         run: |
-          $release_name = if ("${{ github.ref_name }}") { "${{ github.ref_name }}" } else { "latest" }
-          pyinstaller --onefile --windowed --clean `
-            --hidden-import=pynput.keyboard._win32 `
-            --hidden-import=pynput.mouse._win32 `
-            --collect-all pytesseract `
-            --name "AutoMarketSeller-$release_name" `
-            AutoSeller.py
+          python -m pytest
+
+      - name: Build Portable Executable
+        run: |
+          python build_exe.py
+
+      - name: Rename Executable with Tag / Version
+        shell: pwsh
+        run: |
+          $ver = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "v2.0" }
+          Copy-Item "dist/AutoMarketSeller.exe" "dist/AutoMarketSeller-$ver.exe"
 
       - name: Upload Release Asset
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/AutoMarketSeller-*.exe

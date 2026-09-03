@@ -125,3 +125,12 @@ def test_session_stats():
     assert stats.total_silver == 35000
     assert stats.average_price == 17500
     assert len(stats.records) == 2
+
+
+def test_detect_tesseract_custom_path(tmp_path):
+    from AutoSeller import detect_tesseract_binary
+    fake_exe = tmp_path / "tesseract.exe"
+    fake_exe.write_text("fake binary")
+    detected = detect_tesseract_binary(str(fake_exe))
+    assert detected == str(fake_exe)
+

@@ -1506,10 +1506,20 @@ class AutoMarketSeller:
         sys.exit(0)
 
 
-# --- TESSERACT DETECTION ---
+# --- TESSERACT DETECTION & PORTABLE BUNDLING ---
 def detect_tesseract_binary(custom_config_path: str = "") -> str:
+    meipass = getattr(sys, "_MEIPASS", "")
     candidate_paths = [
+        # 1. PyInstaller bundled directory
+        os.path.join(meipass, "tesseract", "tesseract.exe") if meipass else "",
+        os.path.join(meipass, "tesseract.exe") if meipass else "",
+        # 2. Project-local portable directory
+        os.path.join(BASE_DIR, "tesseract", "tesseract.exe"),
+        os.path.join(BASE_DIR, "tesseract-portable", "tesseract.exe"),
+        os.path.join(BASE_DIR, "tesseract.exe"),
+        # 3. User custom configured path
         custom_config_path,
+        # 4. Standard Windows install paths
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
         os.path.expandvars(r"%LOCALAPPDATA%\Programs\Tesseract-OCR\tesseract.exe"),
@@ -1520,6 +1530,10 @@ def detect_tesseract_binary(custom_config_path: str = "") -> str:
     ]
     for p in candidate_paths:
         if p and os.path.isfile(p):
+            tess_dir = os.path.dirname(p)
+            tessdata_path = os.path.join(tess_dir, "tessdata")
+            if os.path.isdir(tessdata_path):
+                os.environ["TESSDATA_PREFIX"] = tessdata_path
             return p
     return ""
 
