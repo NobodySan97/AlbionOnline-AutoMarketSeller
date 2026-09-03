@@ -8,6 +8,12 @@ import shutil
 import subprocess
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 
 def find_tesseract_install():
     candidates = [
@@ -28,13 +34,13 @@ def find_tesseract_install():
 
 def main():
     print("=" * 60)
-    print("🚀 Building Albion Auto Market Seller Standalone Executable")
+    print("Building Albion Auto Market Seller Standalone Executable...")
     print("=" * 60)
 
     try:
         import PyInstaller  # noqa: F401
     except ImportError:
-        print("📦 Installing PyInstaller...")
+        print("Installing PyInstaller...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
     cmd = [
@@ -56,11 +62,11 @@ def main():
 
     tesseract_dir = find_tesseract_install()
     if tesseract_dir:
-        print(f"✅ Found Tesseract at: {tesseract_dir}")
-        print("📦 Bundling portable Tesseract inside the executable...")
+        print(f"[OK] Found Tesseract at: {tesseract_dir}")
+        print("Bundling portable Tesseract inside executable...")
         cmd.extend(["--add-data", f"{tesseract_dir};tesseract"])
     else:
-        print("ℹ️ Tesseract not found in system paths. Executable will search system paths at runtime.")
+        print("[INFO] Tesseract not found in standard system paths.")
 
     if os.path.isdir("templates"):
         cmd.extend(["--add-data", "templates;templates"])
@@ -70,11 +76,11 @@ def main():
 
     if ret == 0:
         print("\n" + "=" * 60)
-        print("🎉 BUILD SUCCESSFUL!")
-        print("📁 Executable location: dist/AutoMarketSeller.exe")
+        print("[SUCCESS] BUILD COMPLETE!")
+        print("Executable location: dist/AutoMarketSeller.exe")
         print("=" * 60)
     else:
-        print("\n❌ Build failed with exit code:", ret)
+        print("\n[ERROR] Build failed with exit code:", ret)
         sys.exit(ret)
 
 
