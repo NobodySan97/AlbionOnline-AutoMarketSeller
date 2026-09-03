@@ -72,7 +72,7 @@ STRINGS = {
         "button_reset_stats": "🔄 Reset Statistics",
         "button_save_config": "💾 Save Config",
         "button_tesseract": "⚙️ Set Tesseract Path",
-        "button_auto_detect": "🔍 Auto-Detect UI via OpenCV",
+        "button_test_templates": "🔍 Test Template Match (OpenCV)",
         "label_strategy": "Pricing Strategy:",
         "strategy_undercut_1": "1 Silver Undercut (-1 Silver)",
         "strategy_percentage": "Discount Ratio (% of Price)",
@@ -115,8 +115,9 @@ STRINGS = {
         "main_critical_error": "Critical error in main loop: {}",
         "tesseract_configured": "✅ Tesseract configured at: {}",
         "export_success": "✅ Statistics exported to:\n{}",
-        "template_detected": "✅ Template matched for {}: at ({}, {})",
-        "template_failed": "⚠️ Template matching failed for {}. Using saved coords.",
+        "log_template_found": "✅ Template matched for '{}': at ({}, {}) [Confidence: {:.0f}%]",
+        "log_template_not_found": "⚠️ Template for '{}' not detected on screen. Using saved coords.",
+        "log_template_saved": "📸 Template captured & saved for '{}'",
         "region_map": {
             "sell_button": "Sell Tab Button",
             "order_button": "Sell Order Button",
@@ -146,7 +147,7 @@ STRINGS = {
         "button_reset_stats": "🔄 Azzera Statistiche",
         "button_save_config": "💾 Salva Configurazione",
         "button_tesseract": "⚙️ Imposta Percorso Tesseract",
-        "button_auto_detect": "🔍 Auto-Rileva UI con OpenCV",
+        "button_test_templates": "🔍 Testa Template Match (OpenCV)",
         "label_strategy": "Strategia di Prezzo:",
         "strategy_undercut_1": "Undercut 1 Silver (-1 Silver)",
         "strategy_percentage": "Sconto Percentuale (% Prezzo)",
@@ -189,8 +190,9 @@ STRINGS = {
         "main_critical_error": "Errore critico nel ciclo: {}",
         "tesseract_configured": "✅ Tesseract configurato su: {}",
         "export_success": "✅ Statistiche esportate in:\n{}",
-        "template_detected": "✅ Template rilevato per {}: a ({}, {})",
-        "template_failed": "⚠️ Template matching non riuscito per {}. Uso coordinate salvate.",
+        "log_template_found": "✅ Template rilevato per '{}': a ({}, {}) [Confidenza: {:.0f}%]",
+        "log_template_not_found": "⚠️ Template per '{}' non trovato a schermo. Uso coordinate salvate.",
+        "log_template_saved": "📸 Template catturato e salvato per '{}'",
         "region_map": {
             "sell_button": "Pulsante Tab 'Vendi'",
             "order_button": "Pulsante 'Ordine di vendita'",
@@ -471,25 +473,42 @@ def parse_albion_number(text: str) -> int | None:
 # --- TEMPLATE MATCHER (OPENCV) ---
 class TemplateMatcher:
     @staticmethod
-    def match_template_on_screen(template_path: str, threshold: float = 0.8) -> tuple[int, int] | None:
-        if not os.path.isfile(template_path):
-            return None
-        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
-        if template is None:
-            return None
+    def find_template_in_image(
+        image_bgr: np.ndarray, template_path: str, threshold: float = 0.75
+    ) -> tuple[tuple[int, int] | None, float]:
+        if not os.path.isfile(template_path) or image_bgr is None:
+            return None, 0.0
+        try:
+            template = cv2.imread(template_path, cv2.IMREAD_COLOR)
+            if template is None:
+                return None, 0.0
 
-        screen = np.array(ImageGrab.grab())
-        screen_bgr = cv2.cvtColor(screen, cv2.COLOR_RGB2BGR)
-
-        res = cv2.matchTemplate(screen_bgr, template, cv2.TM_CCOEFF_NORMED)
-        _, max_val, _, max_loc = cv2.minMaxLoc(res)
-
-        if max_val >= threshold:
             h, w = template.shape[:2]
-            center_x = max_loc[0] + w // 2
-            center_y = max_loc[1] + h // 2
-            return (center_x, center_y)
-        return None
+            img_h, img_w = image_bgr.shape[:2]
+            if h > img_h or w > img_w:
+                return None, 0.0
+
+            res = cv2.matchTemplate(image_bgr, template, cv2.TM_CCOEFF_NORMED)
+            _, max_val, _, max_loc = cv2.minMaxLoc(res)
+
+            if max_val >= threshold:
+                center_x = int(max_loc[0] + w // 2)
+                center_y = int(max_loc[1] + h // 2)
+                return (center_x, center_y), float(max_val)
+            return None, float(max_val)
+        except Exception:
+            return None, 0.0
+
+    @classmethod
+    def match_template_on_screen(
+        cls, template_path: str, threshold: float = 0.75
+    ) -> tuple[tuple[int, int] | None, float]:
+        try:
+            screen = np.array(ImageGrab.grab())
+            screen_bgr = cv2.cvtColor(screen, cv2.COLOR_RGB2BGR)
+            return cls.find_template_in_image(screen_bgr, template_path, threshold=threshold)
+        except Exception:
+            return None, 0.0
 
 
 # --- APPLICATION CLASS ---
@@ -551,7 +570,7 @@ class AutoMarketSeller:
             "floor_price": 0,
             "human_mouse": True,
             "human_typing": True,
-            "auto_template": False,
+            "auto_template": True,
             "regions": {
                 "sell_button": {"x": 0.0, "y": 0.0},
                 "order_button": {"x": 0.0, "y": 0.0},
@@ -640,7 +659,6 @@ class AutoMarketSeller:
         )
         title_lbl.pack(side="left", padx=5)
 
-        # Language dropdown
         current_lang_text = "🇮🇹 Italiano" if self.lang == "it" else "🇬🇧 English"
         self.lang_menu = ctk.CTkOptionMenu(
             header_frame,
@@ -798,8 +816,15 @@ class AutoMarketSeller:
         self.switch_typing = ctk.CTkSwitch(tab_anti, text=self.strings["switch_human_typing"], variable=self.human_typing_var)
         self.switch_typing.pack(anchor="w", padx=15, pady=8)
 
+        self.auto_template_var = ctk.BooleanVar(value=self.config.get("auto_template", True))
+        self.switch_template = ctk.CTkSwitch(tab_anti, text=self.strings["switch_auto_template"], variable=self.auto_template_var)
+        self.switch_template.pack(anchor="w", padx=15, pady=8)
+
         ctk.CTkLabel(tab_anti, text="Computer Vision & OpenCV", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=15, pady=(20, 10))
-        ctk.CTkButton(tab_anti, text=self.strings["button_tesseract"], command=self.prompt_select_tesseract).pack(anchor="w", padx=15, pady=8)
+        buttons_subframe = ctk.CTkFrame(tab_anti, fg_color="transparent")
+        buttons_subframe.pack(anchor="w", padx=15, pady=5, fill="x")
+        ctk.CTkButton(buttons_subframe, text=self.strings["button_test_templates"], command=self.test_all_templates, fg_color="#8e44ad", hover_color="#732d91").pack(side="left", padx=(0, 10))
+        ctk.CTkButton(buttons_subframe, text=self.strings["button_tesseract"], command=self.prompt_select_tesseract).pack(side="left")
 
         # TAB LOGS (Full view)
         self.full_log_text = ctk.CTkTextbox(tab_log, font=("Consolas", 11), wrap="word")
@@ -856,6 +881,8 @@ class AutoMarketSeller:
                 self.config["human_mouse"] = self.human_mouse_var.get()
             if hasattr(self, "human_typing_var"):
                 self.config["human_typing"] = self.human_typing_var.get()
+            if hasattr(self, "auto_template_var"):
+                self.config["auto_template"] = self.auto_template_var.get()
             if hasattr(self, "floor_price_entry"):
                 try:
                     self.config["floor_price"] = max(0, int(self.floor_price_entry.get().strip()))
@@ -906,6 +933,28 @@ class AutoMarketSeller:
             self.config["tesseract_path"] = path
             self.save_config()
             self.log_message("CONFIG", self.strings["tesseract_configured"].format(path))
+
+    def test_all_templates(self):
+        threading.Thread(target=self._run_test_all_templates, daemon=True).start()
+
+    def _run_test_all_templates(self):
+        self.log_message("TEMPLATE", "🔍 Scanning screen for UI buttons via OpenCV...")
+        found_any = False
+        for region_key, region_label in self.strings["region_map"].items():
+            tpl_path = os.path.join(TEMPLATES_DIR, f"{region_key}.png")
+            if not os.path.isfile(tpl_path):
+                self.log_message("TEMPLATE", f"ℹ️ '{region_label}': No saved template found in templates/ folder.")
+                continue
+            center, conf = TemplateMatcher.match_template_on_screen(tpl_path, threshold=0.75)
+            if center is not None:
+                found_any = True
+                self.log_message("TEMPLATE", self.strings["log_template_found"].format(
+                    region_label, center[0], center[1], conf * 100
+                ))
+            else:
+                self.log_message("TEMPLATE", self.strings["log_template_not_found"].format(region_label))
+        if not found_any:
+            self.log_message("HINT", "ℹ️ Run Calibration (F1) to auto-capture button templates!")
 
     def log_message(self, level, message):
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
@@ -1015,9 +1064,31 @@ class AutoMarketSeller:
             rel_x1, rel_y1 = (x1 / self.screen_width * 100), (y1 / self.screen_height * 100)
             rel_x2, rel_y2 = (x2 / self.screen_width * 100), (y2 / self.screen_height * 100)
             self.config["regions"][current_region] = {"x1": rel_x1, "y1": rel_y1, "x2": rel_x2, "y2": rel_y2}
+
+            # Auto-save template crop
+            try:
+                crop_img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
+                tpl_path = os.path.join(TEMPLATES_DIR, f"{current_region}.png")
+                crop_img.save(tpl_path)
+                self.log_message("TEMPLATE", self.strings["log_template_saved"].format(self.strings["region_map"][current_region]))
+            except Exception:
+                pass
         else:
             rel_x, rel_y = (x / self.screen_width * 100), (y / self.screen_height * 100)
             self.config["regions"][current_region] = {"x": rel_x, "y": rel_y}
+
+            # Auto-save button template snippet (70x36 area around click)
+            try:
+                bx1 = max(0, int(x - 35))
+                by1 = max(0, int(y - 18))
+                bx2 = min(self.screen_width, int(x + 35))
+                by2 = min(self.screen_height, int(y + 18))
+                crop_img = ImageGrab.grab(bbox=(bx1, by1, bx2, by2))
+                tpl_path = os.path.join(TEMPLATES_DIR, f"{current_region}.png")
+                crop_img.save(tpl_path)
+                self.log_message("TEMPLATE", self.strings["log_template_saved"].format(self.strings["region_map"][current_region]))
+            except Exception:
+                pass
 
         self.drag_start_point = None
         self.current_drag_box = None
@@ -1194,8 +1265,22 @@ class AutoMarketSeller:
                 int(self.screen_height * region["y"] / 100.0),
             )
 
+    def _resolve_target_coords(self, region_name: str) -> tuple[int, int]:
+        """Resolves target coords using Template Matching if enabled, otherwise relative coords."""
+        if self.config.get("auto_template", True):
+            tpl_path = os.path.join(TEMPLATES_DIR, f"{region_name}.png")
+            if os.path.isfile(tpl_path):
+                center, conf = TemplateMatcher.match_template_on_screen(tpl_path, threshold=0.75)
+                if center is not None:
+                    return center
+
+        coords = self._get_absolute_coords(region_name)
+        if len(coords) == 4:
+            return ((coords[0] + coords[2]) // 2, (coords[1] + coords[3]) // 2)
+        return coords
+
     def _click_target(self, region_name):
-        x, y = self._get_absolute_coords(region_name)
+        x, y = self._resolve_target_coords(region_name)
         human_enabled = self.config.get("human_mouse", True)
         human_move_to(x, y, enabled=human_enabled)
         pyautogui.click(x, y)
