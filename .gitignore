@@ -12,3 +12,6 @@ __pycache__/
 dist/
 build/
 *.spec
+
+# AI Data & Generated Datasets
+ai_data/
