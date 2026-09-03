@@ -55,8 +55,7 @@ STRINGS = {
     "en": {
         "app_title": "🤖 Albion Auto Market Seller v2.0 Pro",
         "tab_dashboard": "📊 Dashboard",
-        "tab_controls": "🎮 Controls",
-        "tab_pricing": "💰 Pricing & Logic",
+        "tab_pricing": "💰 Pricing & Strategy",
         "tab_anti_bot": "🛡️ Anti-Bot & Input",
         "tab_logs": "📋 Activity Log",
         "status_ready": "Status: Ready",
@@ -65,7 +64,7 @@ STRINGS = {
         "status_calibrating": "Status: Calibrating...",
         "author_label": "Author: NobodySan97",
         "resolution_label": "Resolution: {}x{}",
-        "button_start": "▶ Start Selling (F4)",
+        "button_start": "▶ Start Cycle (F4)",
         "button_stop": "■ Stop Cycle (F4)",
         "button_skip": "⏩ Skip Item (F5)",
         "button_cal_full": "🔧 Full Calibration (F1)",
@@ -81,13 +80,13 @@ STRINGS = {
         "label_fallback_ratio": "Discount Ratio (% of Price):",
         "label_max_diff": "Max Allowed Price Diff (%):",
         "label_floor_price": "Floor Price (Min Silver Allowed):",
-        "switch_human_mouse": "Humanized Bézier Mouse Curves",
+        "switch_human_mouse": "Humanized Bézier Mouse Movement",
         "switch_human_typing": "Natural Typing Variations",
         "switch_auto_template": "Auto-Detect Buttons (Template Match)",
         "card_orders": "Orders Created",
         "card_total_silver": "Total Silver Listed",
         "card_avg_price": "Avg Order Price",
-        "card_time_active": "Time Active",
+        "card_time_active": "Active Time",
         "info_config_loaded": "✅ Configuration loaded.",
         "info_config_saved": "💾 Configuration saved.",
         "info_no_config": "ℹ️ Created default configuration.",
@@ -130,7 +129,6 @@ STRINGS = {
     "it": {
         "app_title": "🤖 Albion Auto Market Seller v2.0 Pro",
         "tab_dashboard": "📊 Dashboard",
-        "tab_controls": "🎮 Controlli",
         "tab_pricing": "💰 Prezzo & Strategia",
         "tab_anti_bot": "🛡️ Anti-Bot & Input",
         "tab_logs": "📋 Log Attività",
@@ -156,7 +154,7 @@ STRINGS = {
         "label_fallback_ratio": "Rapporto di Sconto (% del Prezzo):",
         "label_max_diff": "Differenza Massima Ammessa (%):",
         "label_floor_price": "Prezzo Minimo Floor (Silver):",
-        "switch_human_mouse": "Curve di Bézier Mouse Umano",
+        "switch_human_mouse": "Movimento Mouse con Curve di Bézier",
         "switch_human_typing": "Variazione Naturale Digitazione",
         "switch_auto_template": "Auto-Rileva Pulsanti (Template Match)",
         "card_orders": "Ordini Creati",
@@ -196,7 +194,7 @@ STRINGS = {
         "region_map": {
             "sell_button": "Pulsante Tab 'Vendi'",
             "order_button": "Pulsante 'Ordine di vendita'",
-            "price_input": "Campo di input 'Prezzo'",
+            "price_input": "Campo input 'Prezzo'",
             "submit_button": "Pulsante 'Crea ordine'",
             "price_value": "Area 'Prezzo Attuale'",
             "average_price": "Area 'Prezzo Medio'",
@@ -220,7 +218,6 @@ def generate_bezier_curve(
     if dist < 5:
         return [start, end]
 
-    # Perpendicular vector
     nx = -dy / dist
     ny = dx / dist
 
@@ -234,7 +231,6 @@ def generate_bezier_curve(
 
     points = []
     for i in range(num_points):
-        # Ease-in-out pacing
         t_raw = i / (num_points - 1)
         t = 0.5 * (1 - math.cos(math.pi * t_raw))
 
@@ -605,6 +601,20 @@ class AutoMarketSeller:
         except Exception as e:
             self.log_message("ERROR", f"Config save error: {e}")
 
+    def set_language(self, lang_code: str, save: bool = True):
+        self.lang = lang_code
+        self.strings = STRINGS.get(lang_code, STRINGS["en"])
+        self.config["language"] = lang_code
+        if save:
+            self.save_config()
+
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+        self.setup_gui()
+        self.update_gui_from_config()
+        self.update_dashboard_stats()
+
     # --- MODERN GUI SETUP ---
     def setup_gui(self):
         if USE_CUSTOMTKINTER:
@@ -614,13 +624,37 @@ class AutoMarketSeller:
 
     def _setup_customtkinter_gui(self):
         self.root.title(self.strings["app_title"])
-        self.root.geometry("860x640")
-        self.root.minsize(780, 560)
+        self.root.geometry("880x660")
+        self.root.minsize(800, 580)
         self.root.attributes("-topmost", True)
+
+        # Header Frame (Title + Language Selector)
+        header_frame = ctk.CTkFrame(self.root, fg_color="transparent")
+        header_frame.pack(fill="x", padx=12, pady=(10, 0))
+
+        title_lbl = ctk.CTkLabel(
+            header_frame,
+            text=self.strings["app_title"],
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#3498db",
+        )
+        title_lbl.pack(side="left", padx=5)
+
+        # Language dropdown
+        current_lang_text = "🇮🇹 Italiano" if self.lang == "it" else "🇬🇧 English"
+        self.lang_menu = ctk.CTkOptionMenu(
+            header_frame,
+            values=["🇮🇹 Italiano", "🇬🇧 English"],
+            command=self._on_language_select,
+            width=130,
+            height=28,
+        )
+        self.lang_menu.set(current_lang_text)
+        self.lang_menu.pack(side="right", padx=5)
 
         # Tabview
         self.tabview = ctk.CTkTabview(self.root)
-        self.tabview.pack(fill="both", expand=True, padx=12, pady=12)
+        self.tabview.pack(fill="both", expand=True, padx=12, pady=(5, 12))
 
         tab_dash = self.tabview.add(self.strings["tab_dashboard"])
         tab_pricing = self.tabview.add(self.strings["tab_pricing"])
@@ -631,12 +665,16 @@ class AutoMarketSeller:
         top_ctrl_frame = ctk.CTkFrame(tab_dash)
         top_ctrl_frame.pack(fill="x", padx=10, pady=10)
 
+        btn_text = self.strings["button_stop"] if self.main_loop_running else self.strings["button_start"]
+        btn_color = "#e74c3c" if self.main_loop_running else "#2ecc71"
+        btn_hover = "#c0392b" if self.main_loop_running else "#27ae60"
+
         self.start_stop_btn = ctk.CTkButton(
             top_ctrl_frame,
-            text=self.strings["button_start"],
+            text=btn_text,
             command=self.toggle_main_loop,
-            fg_color="#2ecc71",
-            hover_color="#27ae60",
+            fg_color=btn_color,
+            hover_color=btn_hover,
             font=ctk.CTkFont(size=14, weight="bold"),
             height=40,
         )
@@ -770,12 +808,16 @@ class AutoMarketSeller:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def _setup_standard_gui(self):
-        # Fallback standard Tkinter if customtkinter is not available
         self.root.title(self.strings["app_title"])
         self.root.geometry("780x580")
         self.fallback_ratio_var = tk.DoubleVar()
         self.max_diff_var = tk.IntVar()
         self.strategy_var = tk.StringVar(value="undercut_1")
+
+    def _on_language_select(self, chosen: str):
+        lang = "it" if "Italiano" in chosen else "en"
+        if lang != self.lang:
+            self.set_language(lang, save=True)
 
     def _on_strategy_change(self, val):
         if val == self.strings["strategy_undercut_1"]:
@@ -1089,7 +1131,9 @@ class AutoMarketSeller:
         self.selection_canvas.delete("selection_rect")
         x1, y1 = self.drag_start_point
         x2, y2 = self.current_drag_box
-        self.selection_canvas.create_rectangle(x1, y1, x2, y2, fill="#ff3333", outline="#ff0000", width=2, tag="selection_rect")
+        self.selection_canvas.create_rectangle(
+            x1, y1, x2, y2, fill="#ff3333", outline="#ff0000", width=2, tag="selection_rect"
+        )
 
     def _destroy_selection_overlay(self):
         if self.selection_overlay:
