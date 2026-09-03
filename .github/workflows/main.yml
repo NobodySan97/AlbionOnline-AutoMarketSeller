@@ -1,52 +1,50 @@
-# Nome del workflow
 name: Build Windows Executable
 
-# Esegui quando viene creata una nuova "Release"
 on:
   release:
-    types: [created]
+    types: [created, published]
+  workflow_dispatch:
 
-# Lavori da eseguire
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      # 1. Scarica il codice del tuo repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Installa Tesseract (dipendenza esterna)
       - name: Install Tesseract
         run: choco install tesseract-ocr --params "/NoAdmin" -y
 
-      # 3. Imposta Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip'
 
-      # 4. Installa le dipendenze Python
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # --- CORREZIONE QUI: Cerca il file nella root ---
           pip install -r requirements.txt
           pip install pyinstaller
 
-      # 5. Esegui PyInstaller
       - name: Run PyInstaller
         run: |
-          # --- CORREZIONE QUI: Cerca il file nella root ---
-          pyinstaller --onefile --windowed --name "AutoMarketSeller-${{ github.ref_name }}" AutoSeller.py
+          $release_name = if ("${{ github.ref_name }}") { "${{ github.ref_name }}" } else { "latest" }
+          pyinstaller --onefile --windowed --clean `
+            --hidden-import=pynput.keyboard._win32 `
+            --hidden-import=pynput.mouse._win32 `
+            --collect-all pytesseract `
+            --name "AutoMarketSeller-$release_name" `
+            AutoSeller.py
 
-      # 6. Carica l'eseguibile creato come asset della release
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/AutoMarketSeller-*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./dist/AutoMarketSeller-${{ github.ref_name }}.exe
-          asset_name: AutoMarketSeller-${{ github.ref_name }}.exe
-          asset_content_type: application/octet-stream

@@ -1,3 +1,14 @@
-# # File di Configurazione Locale
-# Ignora il file di configurazione con le coordinate e le impostazioni personali
+# File di Configurazione Locale
 auto_config.json
+
+# Python & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+
+# Build & PyInstaller
+dist/
+build/
+*.spec
