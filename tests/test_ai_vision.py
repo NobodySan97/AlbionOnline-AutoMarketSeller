@@ -123,3 +123,14 @@ def test_slot_occupancy():
     # Occupied slot with high variance
     occupied_slot = np.random.randint(0, 255, (50, 50, 3), dtype=np.uint8)
     assert is_inventory_slot_occupied(occupied_slot)
+
+
+def test_yolo_model_loading():
+    try:
+        from ultralytics import YOLO
+        model_path = os.path.abspath("ai_data/models/albion_yolo.pt")
+        if os.path.isfile(model_path):
+            model = YOLO(model_path)
+            assert model is not None
+    except ImportError:
+        pass
