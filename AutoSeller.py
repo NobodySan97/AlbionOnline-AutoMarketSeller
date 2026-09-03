@@ -540,8 +540,9 @@ class AutoMarketSeller:
         self.CONFIG_FILE = os.path.join(BASE_DIR, "auto_config.json")
         self.screen_width, self.screen_height = pyautogui.size()
         self.config = self._get_default_config()
+        self.lang = self.config.get("language", "it")
+        self.strings = STRINGS.get(self.lang, STRINGS["en"])
         self.load_config()
-
         self.lang = self.config.get("language", "it")
         self.strings = STRINGS.get(self.lang, STRINGS["en"])
 
