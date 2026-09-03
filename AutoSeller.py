@@ -1,6 +1,8 @@
+import csv
 import ctypes
 import datetime
 import json
+import math
 import os
 import random
 import re
@@ -10,7 +12,7 @@ import threading
 import time
 from collections import Counter
 import tkinter as tk
-from tkinter import filedialog, font as tkfont, messagebox, scrolledtext
+from tkinter import filedialog, messagebox
 
 import cv2
 import keyboard
@@ -20,115 +22,104 @@ import pyautogui
 from pynput import mouse
 import pytesseract
 
-# --- WINDOWS DPI AWARENESS INITIALIZATION ---
+try:
+    import customtkinter as ctk
+    USE_CUSTOMTKINTER = True
+    ctk.set_appearance_mode("Dark")
+    ctk.set_default_color_theme("blue")
+except ImportError:
+    USE_CUSTOMTKINTER = False
+
+# --- WINDOWS DPI AWARENESS ---
 if sys.platform == "win32":
     try:
-        # Per-Monitor DPI Aware v2 (Windows 10 1703+)
         ctypes.windll.user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4))
     except Exception:
         try:
-            # Per-Monitor DPI Aware (Windows 8.1+)
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except Exception:
             try:
-                # System DPI Aware (Windows Vista+)
                 ctypes.windll.user32.SetProcessDPIAware()
             except Exception:
                 pass
 
-# PyAutoGUI settings
 pyautogui.PAUSE = 0.01
 pyautogui.FAILSAFE = True
 
-# Script base directory for reliable configuration saving
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+os.makedirs(TEMPLATES_DIR, exist_ok=True)
 
-# MULTILINGUAL LOCALIZATION STRINGS
+# MULTILINGUAL STRINGS
 STRINGS = {
     "en": {
-        "app_title": "🤖 Auto Market Seller v1.4",
-        "log_title": "📋 Algorithm Work Log",
+        "app_title": "🤖 Albion Auto Market Seller v2.0 Pro",
+        "tab_dashboard": "📊 Dashboard",
+        "tab_controls": "🎮 Controls",
+        "tab_pricing": "💰 Pricing & Logic",
+        "tab_anti_bot": "🛡️ Anti-Bot & Input",
+        "tab_logs": "📋 Activity Log",
         "status_ready": "Status: Ready",
         "status_running": "Status: Running",
         "status_paused": "Status: Paused",
         "status_calibrating": "Status: Calibrating...",
         "author_label": "Author: NobodySan97",
         "resolution_label": "Resolution: {}x{}",
-        "menu_file": "File",
-        "menu_cal_full": "Start Full Calibration (F1)",
-        "menu_cal_single": "Calibrate Element",
-        "menu_save_config": "Save Configuration",
-        "menu_select_tesseract": "Set Tesseract Path...",
-        "menu_exit": "Exit",
-        "menu_help": "Help",
-        "menu_guide": "Guide",
-        "menu_language": "Language",
-        "controls_title": " Control Panel ",
-        "logic_title": " Logic Settings ",
-        "button_start": "▶ Start (F4)",
-        "button_stop": "■ Stop (F4)",
-        "label_fallback_ratio": "Discount Ratio (% of price):",
-        "label_max_diff": "Maximum Price Difference (%):",
-        "info_config_loaded": "✅ Configuration loaded from file.",
+        "button_start": "▶ Start Selling (F4)",
+        "button_stop": "■ Stop Cycle (F4)",
+        "button_skip": "⏩ Skip Item (F5)",
+        "button_cal_full": "🔧 Full Calibration (F1)",
+        "button_export_csv": "💾 Export CSV Report",
+        "button_reset_stats": "🔄 Reset Statistics",
+        "button_save_config": "💾 Save Config",
+        "button_tesseract": "⚙️ Set Tesseract Path",
+        "button_auto_detect": "🔍 Auto-Detect UI via OpenCV",
+        "label_strategy": "Pricing Strategy:",
+        "strategy_undercut_1": "1 Silver Undercut (-1 Silver)",
+        "strategy_percentage": "Discount Ratio (% of Price)",
+        "strategy_tiered": "Tiered Dynamic Undercut",
+        "label_fallback_ratio": "Discount Ratio (% of Price):",
+        "label_max_diff": "Max Allowed Price Diff (%):",
+        "label_floor_price": "Floor Price (Min Silver Allowed):",
+        "switch_human_mouse": "Humanized Bézier Mouse Curves",
+        "switch_human_typing": "Natural Typing Variations",
+        "switch_auto_template": "Auto-Detect Buttons (Template Match)",
+        "card_orders": "Orders Created",
+        "card_total_silver": "Total Silver Listed",
+        "card_avg_price": "Avg Order Price",
+        "card_time_active": "Time Active",
+        "info_config_loaded": "✅ Configuration loaded.",
         "info_config_saved": "💾 Configuration saved.",
-        "info_no_config": "ℹ️ Configuration file not found. Created with default values.",
-        "error_load_config": "❌ Error loading configuration: {}",
-        "error_save_config": "❌ Could not save configuration: {}",
-        "log_ready": "🎯 Ready for use.",
-        "log_cal_start": "🔧 Calibration mode started.",
-        "log_cal_hint": "ℹ️ Follow instructions in the overlay window. Press 'Esc' to cancel.",
-        "log_cal_done": "✅ Calibration complete! Configuration saved.",
-        "log_cal_cancel": "❌ Calibration cancelled by user.",
-        "log_cal_point_saved": "📍 {} saved: ({:.2f}%, {:.2f}%)",
-        "log_cal_area_saved": "✅ {} saved: {:.2f}%, {:.2f}% -> {:.2f}%, {:.2f}%",
-        "log_main_start": "🚀 Sales cycle started. Press F4 to stop.",
-        "log_main_stop_user": "🛑 Sales cycle stopped by user (F4).",
-        "log_cycle_skip_user": "⏩ Current item skipped by user (F5).",
+        "info_no_config": "ℹ️ Created default configuration.",
+        "log_ready": "🎯 AutoMarketSeller Pro Ready.",
+        "log_cal_start": "🔧 Calibration started. Follow the overlay instructions.",
+        "log_cal_hint": "ℹ️ Press 'Esc' to cancel calibration at any time.",
+        "log_cal_done": "✅ Calibration complete! Saved to auto_config.json.",
+        "log_cal_cancel": "❌ Calibration cancelled.",
+        "log_main_start": "🚀 Sales automation started (F4 to stop, F5 to skip).",
+        "log_main_stop": "🛑 Sales cycle stopped by user (F4).",
+        "log_cycle_skip": "⏩ Skipped current item by user (F5).",
         "log_test_price": "Test 'Price': {:,}",
-        "log_test_price_fail": "❌ Test 'Price': Recognition failed.",
-        "log_test_avg_price": "Test 'Average Price': {:,}",
-        "log_test_avg_price_fail": "❌ Test 'Average Price': Recognition failed.",
-        "cal_window_title": "Calibration Instructions",
+        "log_test_price_fail": "❌ Test 'Price': OCR recognition failed.",
+        "log_test_avg_price": "Test 'Avg Price': {:,}",
+        "log_test_avg_price_fail": "❌ Test 'Avg Price': OCR recognition failed.",
+        "cal_window_title": "Calibration Mode",
         "cal_step_info": "[Step {}/{}]",
         "cal_instruction_point": "{}\nRIGHT-CLICK on:\n'{}'",
-        "cal_instruction_area": "{}\nHold SHIFT and drag to select the area of:\n'{}'\n\n(Release and RIGHT-CLICK to confirm)",
-        "ocr_robust_start": "🔍 Starting robust recognition ({} attempts)...",
-        "ocr_robust_attempt": "OCR attempt {} [{}]: '{}' -> {}",
-        "ocr_no_valid_results": "❌ All recognition attempts failed.",
-        "ocr_majority_found": "✅ Consensus price found: {:,} (agreed {} times)",
-        "ocr_majority_fail": "⚠️ Insufficient matches: {:,} ({} times), required ≥ {}",
-        "main_num1_ok": "Current lowest price: {:,}",
-        "main_num1_fail": "❌ Unable to recognize current price.",
-        "main_num2_fail": "❌ Unable to recognize average price. Skipping iteration.",
-        "main_num2_ok": "Average price: {:,}",
-        "main_fallback": "→ Fallback: {:.0f}% of average price ({:,}) = {:,}",
-        "main_fallback_num1": "→ Fallback: {:.0f}% of current price ({:,}) = {:,}",
-        "main_diff_check": "⚠️ Current price differs >{}% from average ({:.1f}% diff). Undercut trap protected: using average price fallback.",
-        "main_result_from_refined": "→ Protected result: {:.0f}% of average price = {:,}",
-        "main_result_from_close": "→ Consistent prices ({:.1f}% diff). Result: {:.0f}% of lowest order = {:,}",
-        "main_value_entered": "✅ Value entered: {:,}",
-        "main_critical_error": "Critical error in the main loop: {}",
-        "main_failsafe": "⚠️ PyAutoGUI Failsafe triggered (mouse moved to corner). Main loop stopped.",
-        "tesseract_select_prompt": "Please locate tesseract.exe on your computer",
+        "cal_instruction_area": "{}\nHold SHIFT and drag to select area of:\n'{}'\n\n(Release and RIGHT-CLICK to confirm)",
+        "main_num1_ok": "Lowest Sell Order: {:,} Silver",
+        "main_num1_fail": "⚠️ Could not read lowest sell order.",
+        "main_num2_ok": "Average Market Price: {:,} Silver",
+        "main_num2_fail": "❌ Could not read average price. Skipping item.",
+        "main_value_entered": "✅ Order placed at: {:,} Silver (Strategy: {})",
+        "main_failsafe": "⚠️ PyAutoGUI Failsafe triggered (cursor at screen corner).",
+        "main_critical_error": "Critical error in main loop: {}",
         "tesseract_configured": "✅ Tesseract configured at: {}",
-        "help_text": (
-            "Keyboard Shortcuts:\n"
-            "• F1: Start Full Calibration\n"
-            "• F2: Test Current Price Recognition\n"
-            "• F3: Test Average Price Recognition\n"
-            "• F4: Start / Stop Main Loop\n"
-            "• F5: Skip Current Item / Iteration\n"
-            "• Esc: Cancel Calibration (when calibrating)\n\n"
-            "Calibration Steps:\n"
-            "1. Click 'Sell' tab\n"
-            "2. Click 'Sell Order' button\n"
-            "3. Click 'Price' input box\n"
-            "4. Click 'Create Order' button\n"
-            "5. Select current price area (Shift + Drag, then Right-Click)\n"
-            "6. Select average price area (Shift + Drag, then Right-Click)"
-        ),
+        "export_success": "✅ Statistics exported to:\n{}",
+        "template_detected": "✅ Template matched for {}: at ({}, {})",
+        "template_failed": "⚠️ Template matching failed for {}. Using saved coords.",
         "region_map": {
-            "sell_button": "Sell Button",
+            "sell_button": "Sell Tab Button",
             "order_button": "Sell Order Button",
             "price_input": "Price Input Field",
             "submit_button": "Create Order Button",
@@ -137,89 +128,73 @@ STRINGS = {
         },
     },
     "it": {
-        "app_title": "🤖 Auto Market Seller v1.4",
-        "log_title": "📋 Log di Lavoro dell'Algoritmo",
+        "app_title": "🤖 Albion Auto Market Seller v2.0 Pro",
+        "tab_dashboard": "📊 Dashboard",
+        "tab_controls": "🎮 Controlli",
+        "tab_pricing": "💰 Prezzo & Strategia",
+        "tab_anti_bot": "🛡️ Anti-Bot & Input",
+        "tab_logs": "📋 Log Attività",
         "status_ready": "Stato: Pronto",
         "status_running": "Stato: In Esecuzione",
         "status_paused": "Stato: In Pausa",
         "status_calibrating": "Stato: Calibrazione...",
         "author_label": "Autore: NobodySan97",
         "resolution_label": "Risoluzione: {}x{}",
-        "menu_file": "File",
-        "menu_cal_full": "Avvia Calibrazione Completa (F1)",
-        "menu_cal_single": "Calibra Elemento",
-        "menu_save_config": "Salva Configurazione",
-        "menu_select_tesseract": "Imposta Percorso Tesseract...",
-        "menu_exit": "Esci",
-        "menu_help": "Aiuto",
-        "menu_guide": "Guida",
-        "menu_language": "Lingua",
-        "controls_title": " Pannello di Controllo ",
-        "logic_title": " Impostazioni Logiche ",
-        "button_start": "▶ Avvia (F4)",
-        "button_stop": "■ Ferma (F4)",
-        "label_fallback_ratio": "Rapporto di Sconto (% del prezzo):",
-        "label_max_diff": "Differenza Massima Prezzi (%):",
-        "info_config_loaded": "✅ Configurazione caricata dal file.",
+        "button_start": "▶ Avvia Ciclo (F4)",
+        "button_stop": "■ Ferma Ciclo (F4)",
+        "button_skip": "⏩ Salta Oggetto (F5)",
+        "button_cal_full": "🔧 Calibrazione Completa (F1)",
+        "button_export_csv": "💾 Esporta Report CSV",
+        "button_reset_stats": "🔄 Azzera Statistiche",
+        "button_save_config": "💾 Salva Configurazione",
+        "button_tesseract": "⚙️ Imposta Percorso Tesseract",
+        "button_auto_detect": "🔍 Auto-Rileva UI con OpenCV",
+        "label_strategy": "Strategia di Prezzo:",
+        "strategy_undercut_1": "Undercut 1 Silver (-1 Silver)",
+        "strategy_percentage": "Sconto Percentuale (% Prezzo)",
+        "strategy_tiered": "Undercut Dinamico per Fasce",
+        "label_fallback_ratio": "Rapporto di Sconto (% del Prezzo):",
+        "label_max_diff": "Differenza Massima Ammessa (%):",
+        "label_floor_price": "Prezzo Minimo Floor (Silver):",
+        "switch_human_mouse": "Curve di Bézier Mouse Umano",
+        "switch_human_typing": "Variazione Naturale Digitazione",
+        "switch_auto_template": "Auto-Rileva Pulsanti (Template Match)",
+        "card_orders": "Ordini Creati",
+        "card_total_silver": "Totale Silver Piazzato",
+        "card_avg_price": "Prezzo Medio Ordine",
+        "card_time_active": "Tempo Attivo",
+        "info_config_loaded": "✅ Configurazione caricata.",
         "info_config_saved": "💾 Configurazione salvata.",
-        "info_no_config": "ℹ️ File di configurazione non trovato. Creato con i valori predefiniti.",
-        "error_load_config": "❌ Errore nel caricamento della configurazione: {}",
-        "error_save_config": "❌ Impossibile salvare la configurazione: {}",
-        "log_ready": "🎯 Pronto per l'uso.",
-        "log_cal_start": "🔧 Modalità di calibrazione avviata.",
-        "log_cal_hint": "ℹ️ Segui le istruzioni nella finestra in sovrimpressione. Premi 'Esc' per annullare.",
-        "log_cal_done": "✅ Calibrazione completata! Configurazione salvata.",
-        "log_cal_cancel": "❌ Calibrazione annullata dall'utente.",
-        "log_cal_point_saved": "📍 {} salvato: ({:.2f}%, {:.2f}%)",
-        "log_cal_area_saved": "✅ {} salvata: {:.2f}%, {:.2f}% -> {:.2f}%, {:.2f}%",
-        "log_main_start": "🚀 Ciclo di vendita avviato. Premi F4 per fermare.",
-        "log_main_stop_user": "🛑 Ciclo di vendita fermato dall'utente (F4).",
-        "log_cycle_skip_user": "⏩ Oggetto corrente saltato dall'utente (F5).",
+        "info_no_config": "ℹ️ Creata configurazione predefinita.",
+        "log_ready": "🎯 AutoMarketSeller Pro Pronto.",
+        "log_cal_start": "🔧 Calibrazione avviata. Segui le istruzioni a schermo.",
+        "log_cal_hint": "ℹ️ Premi 'Esc' per annullare la calibrazione.",
+        "log_cal_done": "✅ Calibrazione completata! Salvata in auto_config.json.",
+        "log_cal_cancel": "❌ Calibrazione annullata.",
+        "log_main_start": "🚀 Ciclo di vendita avviato (F4 ferma, F5 salta).",
+        "log_main_stop": "🛑 Ciclo di vendita fermato dall'utente (F4).",
+        "log_cycle_skip": "⏩ Oggetto corrente saltato dall'utente (F5).",
         "log_test_price": "Test 'Prezzo': {:,}",
-        "log_test_price_fail": "❌ Test 'Prezzo': Riconoscimento fallito.",
+        "log_test_price_fail": "❌ Test 'Prezzo': Riconoscimento OCR fallito.",
         "log_test_avg_price": "Test 'Prezzo Medio': {:,}",
-        "log_test_avg_price_fail": "❌ Test 'Prezzo Medio': Riconoscimento fallito.",
-        "cal_window_title": "Istruzioni di Calibrazione",
+        "log_test_avg_price_fail": "❌ Test 'Prezzo Medio': Riconoscimento OCR fallito.",
+        "cal_window_title": "Modalità Calibrazione",
         "cal_step_info": "[Passo {}/{}]",
         "cal_instruction_point": "{}\nFai clic con il TASTO DESTRO su:\n'{}'",
-        "cal_instruction_area": "{}\nTieni premuto MAIUSC e trascina per selezionare l'area di:\n'{}'\n\n(Rilascia e fai clic con il TASTO DESTRO per confermare)",
-        "ocr_robust_start": "🔍 Avvio riconoscimento robusto ({} tentativi)...",
-        "ocr_robust_attempt": "Tentativo OCR {} [{}]: '{}' -> {}",
-        "ocr_no_valid_results": "❌ Tutti i tentativi di riconoscimento sono falliti.",
-        "ocr_majority_found": "✅ Prezzo di consenso trovato: {:,} (confermato {} volte)",
-        "ocr_majority_fail": "⚠️ Corrispondenze insufficienti: {:,} ({} volte), necessarie ≥ {}",
-        "main_num1_ok": "Prezzo minimo attuale: {:,}",
-        "main_num1_fail": "❌ Impossibile riconoscere il prezzo attuale.",
-        "main_num2_fail": "❌ Impossibile riconoscere il prezzo medio. Salto l'iterazione.",
-        "main_num2_ok": "Prezzo medio: {:,}",
-        "main_fallback": "→ Fallback: {:.0f}% del prezzo medio ({:,}) = {:,}",
-        "main_fallback_num1": "→ Fallback: {:.0f}% del prezzo attuale ({:,}) = {:,}",
-        "main_diff_check": "⚠️ Il prezzo differisce >{}% dalla media ({:.1f}% diff). Protezione undercut attiva: uso fallback prezzo medio.",
-        "main_result_from_refined": "→ Risultato protetto: {:.0f}% del prezzo medio = {:,}",
-        "main_result_from_close": "→ Prezzi coerenti ({:.1f}% diff). Risultato: {:.0f}% del prezzo minimo = {:,}",
-        "main_value_entered": "✅ Valore inserito: {:,}",
-        "main_critical_error": "Errore critico nel ciclo principale: {}",
-        "main_failsafe": "⚠️ PyAutoGUI Failsafe attivato (mouse spostato all'angolo dello schermo). Ciclo fermato.",
-        "tesseract_select_prompt": "Seleziona il file tesseract.exe sul tuo computer",
+        "cal_instruction_area": "{}\nTieni premuto MAIUSC e trascina per selezionare:\n'{}'\n\n(Rilascia e fai clic con il TASTO DESTRO per confermare)",
+        "main_num1_ok": "Prezzo Minimo Ordine: {:,} Silver",
+        "main_num1_fail": "⚠️ Impossibile leggere il prezzo minimo.",
+        "main_num2_ok": "Prezzo Medio di Mercato: {:,} Silver",
+        "main_num2_fail": "❌ Impossibile leggere il prezzo medio. Salto l'oggetto.",
+        "main_value_entered": "✅ Ordine inserito a: {:,} Silver (Strategia: {})",
+        "main_failsafe": "⚠️ PyAutoGUI Failsafe attivato (cursore all'angolo dello schermo).",
+        "main_critical_error": "Errore critico nel ciclo: {}",
         "tesseract_configured": "✅ Tesseract configurato su: {}",
-        "help_text": (
-            "Scorciatoie da tastiera:\n"
-            "• F1: Avvia Calibrazione Completa\n"
-            "• F2: Test Riconoscimento Prezzo Attuale\n"
-            "• F3: Test Riconoscimento Prezzo Medio\n"
-            "• F4: Avvia / Ferma Ciclo Principale\n"
-            "• F5: Salta Oggetto / Iterazione Corrente\n"
-            "• Esc: Annulla Calibrazione (durante la calibrazione)\n\n"
-            "Passi di Calibrazione:\n"
-            "1. Clicca sul pulsante 'Vendi'\n"
-            "2. Clicca sul pulsante 'Ordine di vendita'\n"
-            "3. Clicca sul campo 'Prezzo'\n"
-            "4. Clicca sul pulsante 'Crea ordine'\n"
-            "5. Seleziona l'area del prezzo attuale (Shift + Trascina, poi Click Destro)\n"
-            "6. Seleziona l'area del prezzo medio (Shift + Trascina, poi Click Destro)"
-        ),
+        "export_success": "✅ Statistiche esportate in:\n{}",
+        "template_detected": "✅ Template rilevato per {}: a ({}, {})",
+        "template_failed": "⚠️ Template matching non riuscito per {}. Uso coordinate salvate.",
         "region_map": {
-            "sell_button": "Pulsante 'Vendi'",
+            "sell_button": "Pulsante Tab 'Vendi'",
             "order_button": "Pulsante 'Ordine di vendita'",
             "price_input": "Campo di input 'Prezzo'",
             "submit_button": "Pulsante 'Crea ordine'",
@@ -230,8 +205,194 @@ STRINGS = {
 }
 
 
+# --- BEZIER MOUSE CURVES & HUMANIZED INPUT ---
+def generate_bezier_curve(
+    start: tuple[int, int], end: tuple[int, int], num_points: int = 25, deviation: int = 30
+) -> list[tuple[int, int]]:
+    """Generates smooth human-like cubic Bézier curve trajectory."""
+    x0, y0 = start
+    x3, y3 = end
+
+    dx = x3 - x0
+    dy = y3 - y0
+    dist = math.hypot(dx, dy)
+
+    if dist < 5:
+        return [start, end]
+
+    # Perpendicular vector
+    nx = -dy / dist
+    ny = dx / dist
+
+    offset1 = random.uniform(-deviation, deviation)
+    offset2 = random.uniform(-deviation, deviation)
+
+    x1 = int(x0 + dx * 0.33 + nx * offset1)
+    y1 = int(y0 + dy * 0.33 + ny * offset1)
+    x2 = int(x0 + dx * 0.66 + nx * offset2)
+    y2 = int(y0 + dy * 0.66 + ny * offset2)
+
+    points = []
+    for i in range(num_points):
+        # Ease-in-out pacing
+        t_raw = i / (num_points - 1)
+        t = 0.5 * (1 - math.cos(math.pi * t_raw))
+
+        bx = (1 - t) ** 3 * x0 + 3 * (1 - t) ** 2 * t * x1 + 3 * (1 - t) * t**2 * x2 + t**3 * x3
+        by = (1 - t) ** 3 * y0 + 3 * (1 - t) ** 2 * t * y1 + 3 * (1 - t) * t**2 * y2 + t**3 * y3
+        points.append((int(round(bx)), int(round(by))))
+
+    return points
+
+
+def get_gaussian_delay(min_val: float, max_val: float) -> float:
+    """Returns random delay sampled from bounded Gaussian distribution."""
+    mu = (min_val + max_val) / 2.0
+    sigma = (max_val - min_val) / 6.0
+    val = random.gauss(mu, sigma)
+    return max(min_val, min(max_val, val))
+
+
+def human_move_to(target_x: int, target_y: int, enabled: bool = True):
+    """Moves mouse naturally using Bézier curves."""
+    if not enabled:
+        pyautogui.moveTo(target_x, target_y)
+        return
+
+    current_pos = pyautogui.position()
+    dist = math.hypot(target_x - current_pos[0], target_y - current_pos[1])
+    num_pts = max(10, min(40, int(dist / 20)))
+    curve = generate_bezier_curve(current_pos, (target_x, target_y), num_points=num_pts)
+
+    for pt in curve:
+        pyautogui.moveTo(pt[0], pt[1])
+        time.sleep(random.uniform(0.003, 0.008))
+
+
+def human_type(text: str, enabled: bool = True):
+    """Types text with natural human keystroke intervals."""
+    for ch in text:
+        pyautogui.write(ch)
+        if enabled:
+            time.sleep(get_gaussian_delay(0.025, 0.065))
+
+
+# --- SESSION STATISTICS TRACKER ---
+class SessionStats:
+    def __init__(self):
+        self.start_time = time.time()
+        self.total_orders = 0
+        self.total_silver = 0
+        self.records = []
+        self.lock = threading.Lock()
+
+    def record_sale(self, price: int, strategy: str = "normal", reason: str = "ok", diff_percent: float = 0.0, item_name: str = "Item"):
+        with self.lock:
+            self.total_orders += 1
+            self.total_silver += price
+            self.records.append({
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "item": item_name,
+                "price": price,
+                "strategy": strategy,
+                "reason": reason,
+                "diff_percent": round(diff_percent, 2),
+            })
+
+    @property
+    def average_price(self) -> int:
+        with self.lock:
+            return int(self.total_silver / self.total_orders) if self.total_orders > 0 else 0
+
+    @property
+    def elapsed_formatted(self) -> str:
+        elapsed = int(time.time() - self.start_time)
+        hours, remainder = divmod(elapsed, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+    def reset(self):
+        with self.lock:
+            self.start_time = time.time()
+            self.total_orders = 0
+            self.total_silver = 0
+            self.records.clear()
+
+    def export_csv(self, file_path: str):
+        with self.lock:
+            with open(file_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(
+                    f, fieldnames=["timestamp", "item", "price", "strategy", "reason", "diff_percent"]
+                )
+                writer.writeheader()
+                writer.writerows(self.records)
+
+
+# --- PRICING ENGINE ---
+def calculate_sell_price(
+    number1: int | None,
+    number2: int | None,
+    fallback_ratio: float = 0.90,
+    max_diff_percent: float = 30.0,
+    strategy: str = "percentage",
+    floor_price: int = 0,
+) -> tuple[int, str, float]:
+    """
+    Intelligent pricing logic supporting Undercut-1, Percentage, and Tiered pricing.
+    """
+    if number1 is None and number2 is None:
+        return (0, "none", 0.0)
+
+    if number1 is None and number2 is not None:
+        raw_price = int(round(number2 * fallback_ratio))
+        price = max(1, raw_price, floor_price)
+        reason = "floor_protected" if floor_price > raw_price else "fallback_avg"
+        return (price, reason, 0.0)
+
+    if number2 is None and number1 is not None:
+        if strategy == "undercut_1":
+            raw_price = number1 - 1 if number1 > 1 else 1
+        else:
+            raw_price = int(round(number1 * fallback_ratio))
+        price = max(1, raw_price, floor_price)
+        reason = "floor_protected" if floor_price > raw_price else "fallback_num1"
+        return (price, reason, 0.0)
+
+    diff_percent = abs(number1 - number2) / max(1, number2) * 100.0
+
+    # Anomaly protection: if lowest sell order is severely undercut / troll price
+    if diff_percent > max_diff_percent and number1 < number2 * (1.0 - max_diff_percent / 100.0):
+        raw_price = int(round(number2 * fallback_ratio))
+        price = max(1, raw_price, floor_price)
+        return (price, "diff_protected", diff_percent)
+
+    # Normal calculations based on selected strategy
+    if strategy == "undercut_1":
+        raw_price = number1 - 1 if number1 > 1 else 1
+        reason = "undercut_1"
+    elif strategy == "tiered":
+        if number1 >= 1_000_000:
+            raw_price = number1 - 1
+        elif number1 >= 100_000:
+            raw_price = int(round(number1 * 0.95))
+        else:
+            raw_price = int(round(number1 * fallback_ratio))
+        reason = "tiered"
+    else:  # percentage
+        raw_price = int(round(number1 * fallback_ratio))
+        reason = "percentage"
+
+    if floor_price > 0 and raw_price < floor_price:
+        price = floor_price
+        reason = f"{reason}_floor_clamped"
+    else:
+        price = max(1, raw_price)
+
+    return (price, reason, diff_percent)
+
+
+# --- CONFIG DEEP MERGE ---
 def deep_merge_config(default_cfg: dict, user_cfg: dict) -> dict:
-    """Recursively merges user_cfg into default_cfg preserving default keys."""
     merged = default_cfg.copy()
     for k, v in user_cfg.items():
         if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
@@ -241,19 +402,14 @@ def deep_merge_config(default_cfg: dict, user_cfg: dict) -> dict:
     return merged
 
 
+# --- NUMBER PARSER ---
 def parse_albion_number(text: str) -> int | None:
-    """
-    Robust number parser for Albion Online market UI text.
-    Handles US format (1,500,000), EU format (1.500.000), decimals with suffixes (1.5M, 10.5k),
-    and strips noise or common OCR letter confusions.
-    """
     if not text:
         return None
 
     text = text.strip()
     text = re.sub(r"[^\w.,]", "", text)
 
-    # Normalize common OCR character confusions in digits
     text = text.replace("O", "0").replace("o", "0")
     text = text.replace("l", "1").replace("I", "1")
     text = text.replace("S", "5").replace("s", "5")
@@ -316,37 +472,31 @@ def parse_albion_number(text: str) -> int | None:
         return None
 
 
-def calculate_sell_price(
-    number1: int | None,
-    number2: int | None,
-    fallback_ratio: float,
-    max_diff_percent: float,
-) -> tuple[int, str, float]:
-    """
-    Calculates target sell order price with safety protections.
-    Returns (price, reason_key, diff_percent).
-    """
-    if number1 is None and number2 is None:
-        return (0, "none", 0.0)
+# --- TEMPLATE MATCHER (OPENCV) ---
+class TemplateMatcher:
+    @staticmethod
+    def match_template_on_screen(template_path: str, threshold: float = 0.8) -> tuple[int, int] | None:
+        if not os.path.isfile(template_path):
+            return None
+        template = cv2.imread(template_path, cv2.IMREAD_COLOR)
+        if template is None:
+            return None
 
-    if number1 is None:
-        return (max(1, int(round(number2 * fallback_ratio))), "fallback_avg", 0.0)
+        screen = np.array(ImageGrab.grab())
+        screen_bgr = cv2.cvtColor(screen, cv2.COLOR_RGB2BGR)
 
-    if number2 is None:
-        return (max(1, int(round(number1 * fallback_ratio))), "fallback_num1", 0.0)
+        res = cv2.matchTemplate(screen_bgr, template, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
 
-    diff_percent = abs(number1 - number2) / max(1, number2) * 100.0
-
-    if diff_percent > max_diff_percent:
-        # If current lowest order is heavily undercut / trap price (< average - diff%)
-        if number1 < number2 * (1.0 - max_diff_percent / 100.0):
-            return (max(1, int(round(number2 * fallback_ratio))), "diff_protected", diff_percent)
-        else:
-            return (max(1, int(round(number1 * fallback_ratio))), "close", diff_percent)
-    else:
-        return (max(1, int(round(number1 * fallback_ratio))), "close", diff_percent)
+        if max_val >= threshold:
+            h, w = template.shape[:2]
+            center_x = max_loc[0] + w // 2
+            center_y = max_loc[1] + h // 2
+            return (center_x, center_y)
+        return None
 
 
+# --- APPLICATION CLASS ---
 class AutoMarketSeller:
     def __init__(self, root):
         self.root = root
@@ -363,6 +513,7 @@ class AutoMarketSeller:
         self.skip_iteration_event = threading.Event()
         self.state_lock = threading.Lock()
 
+        self.stats = SessionStats()
         self.log_queue = []
         self.log_lock = threading.Lock()
 
@@ -371,15 +522,12 @@ class AutoMarketSeller:
         self.instruction_window = None
         self.instruction_label = None
 
-        self.lang = "en"
-        self.strings = STRINGS[self.lang]
-
         self.CONFIG_FILE = os.path.join(BASE_DIR, "auto_config.json")
         self.screen_width, self.screen_height = pyautogui.size()
         self.config = self._get_default_config()
         self.load_config()
 
-        self.lang = self.config.get("language", "en")
+        self.lang = self.config.get("language", "it")
         self.strings = STRINGS.get(self.lang, STRINGS["en"])
 
         self.setup_gui()
@@ -389,34 +537,25 @@ class AutoMarketSeller:
         self.setup_hotkeys()
         self.start_input_listeners()
 
-        # Single recurring timer for UI log draining
         self.root.after(200, self.update_log_area)
+        self.root.after(1000, self.update_dashboard_stats)
         self.log_message("INFO", self.strings["log_ready"])
 
     def _safe_gui_call(self, func, *args, **kwargs):
-        """Dispatches a GUI function onto the Tkinter main thread."""
         try:
             self.root.after(0, lambda: func(*args, **kwargs))
         except Exception:
             pass
 
-    def set_language(self, lang_code, save=False):
-        self.lang = lang_code
-        self.strings = STRINGS.get(lang_code, STRINGS["en"])
-
-        for widget in self.root.winfo_children():
-            widget.destroy()
-        self.setup_gui()
-        self.update_gui_from_config()
-
-        if save:
-            self.config["language"] = lang_code
-            self.save_config()
-
     def _get_default_config(self):
         return {
-            "language": "en",
+            "language": "it",
             "tesseract_path": "",
+            "strategy": "undercut_1",  # "undercut_1", "percentage", "tiered"
+            "floor_price": 0,
+            "human_mouse": True,
+            "human_typing": True,
+            "auto_template": False,
             "regions": {
                 "sell_button": {"x": 0.0, "y": 0.0},
                 "order_button": {"x": 0.0, "y": 0.0},
@@ -428,17 +567,17 @@ class AutoMarketSeller:
             "logic": {
                 "fallback_ratio": 0.90,
                 "max_difference_percent": 30,
-                "robust_attempts": 12,
-                "min_majority_count": 4,
+                "robust_attempts": 10,
+                "min_majority_count": 3,
             },
             "ocr": {
                 "whitelist_digits": "0123456789.,MTKmtk",
             },
             "sleep": {
-                "between_clicks": {"min": 0.04, "max": 0.06},
-                "after_recognition": {"min": 0.04, "max": 0.06},
-                "before_input": {"min": 0.04, "max": 0.06},
-                "after_input": {"min": 0.14, "max": 0.16},
+                "between_clicks": {"min": 0.04, "max": 0.07},
+                "after_recognition": {"min": 0.04, "max": 0.07},
+                "before_input": {"min": 0.04, "max": 0.07},
+                "after_input": {"min": 0.14, "max": 0.18},
                 "between_cycles": {"min": 0.4, "max": 0.6},
                 "robust_recognition": {"min": 0.02, "max": 0.03},
             },
@@ -452,7 +591,7 @@ class AutoMarketSeller:
                 self.config = deep_merge_config(self.config, loaded_config)
                 self.log_message("CONFIG", self.strings["info_config_loaded"])
             except Exception as e:
-                self.log_message("ERROR", self.strings["error_load_config"].format(e))
+                self.log_message("ERROR", f"Config load error: {e}")
         else:
             self.log_message("INFO", self.strings["info_no_config"])
             self.save_config()
@@ -464,225 +603,206 @@ class AutoMarketSeller:
                 json.dump(self.config, f, indent=4, ensure_ascii=False)
             self.log_message("CONFIG", self.strings["info_config_saved"])
         except Exception as e:
-            self.log_message("ERROR", self.strings["error_save_config"].format(e))
+            self.log_message("ERROR", f"Config save error: {e}")
 
+    # --- MODERN GUI SETUP ---
     def setup_gui(self):
+        if USE_CUSTOMTKINTER:
+            self._setup_customtkinter_gui()
+        else:
+            self._setup_standard_gui()
+
+    def _setup_customtkinter_gui(self):
         self.root.title(self.strings["app_title"])
-        self.root.geometry("760x560")
+        self.root.geometry("860x640")
+        self.root.minsize(780, 560)
         self.root.attributes("-topmost", True)
-        self.root.configure(bg="#2d2d2d")
 
-        default_font = tkfont.nametofont("TkDefaultFont")
-        default_font.configure(family="Segoe UI", size=10)
+        # Tabview
+        self.tabview = ctk.CTkTabview(self.root)
+        self.tabview.pack(fill="both", expand=True, padx=12, pady=12)
 
-        # Menu bar
-        menu_bar = tk.Menu(self.root)
-        file_menu = tk.Menu(menu_bar, tearoff=0)
-        file_menu.add_command(
-            label=self.strings["menu_cal_full"],
-            command=self.start_full_calibration,
-        )
+        tab_dash = self.tabview.add(self.strings["tab_dashboard"])
+        tab_pricing = self.tabview.add(self.strings["tab_pricing"])
+        tab_anti = self.tabview.add(self.strings["tab_anti_bot"])
+        tab_log = self.tabview.add(self.strings["tab_logs"])
 
-        cal_single_menu = tk.Menu(file_menu, tearoff=0)
-        for region_key, region_name in self.strings["region_map"].items():
-            cal_single_menu.add_command(
-                label=region_name,
-                command=lambda r=region_key: self.start_single_calibration(r),
-            )
-        file_menu.add_cascade(
-            label=self.strings["menu_cal_single"],
-            menu=cal_single_menu,
-        )
-        file_menu.add_command(
-            label=self.strings["menu_select_tesseract"],
-            command=self.prompt_select_tesseract,
-        )
-        file_menu.add_command(
-            label=self.strings["menu_save_config"],
-            command=self.save_config,
-        )
-        file_menu.add_separator()
-        file_menu.add_command(
-            label=self.strings["menu_exit"],
-            command=self.on_closing,
-        )
-        menu_bar.add_cascade(label=self.strings["menu_file"], menu=file_menu)
+        # Top Control Bar in Dashboard
+        top_ctrl_frame = ctk.CTkFrame(tab_dash)
+        top_ctrl_frame.pack(fill="x", padx=10, pady=10)
 
-        lang_menu = tk.Menu(menu_bar, tearoff=0)
-        for lang_code, lang_name in {"en": "English", "it": "Italiano"}.items():
-            lang_menu.add_command(
-                label=lang_name,
-                command=lambda lc=lang_code: self.set_language(lc, save=True),
-            )
-        menu_bar.add_cascade(label=self.strings["menu_language"], menu=lang_menu)
-
-        help_menu = tk.Menu(menu_bar, tearoff=0)
-        help_menu.add_command(
-            label=self.strings["menu_guide"],
-            command=self.show_help,
-        )
-        menu_bar.add_cascade(label=self.strings["menu_help"], menu=help_menu)
-
-        self.root.config(menu=menu_bar)
-
-        # Main Layout frames
-        main_frame = tk.Frame(self.root, bg="#2d2d2d")
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        main_frame.grid_rowconfigure(0, weight=1)
-        main_frame.grid_columnconfigure(0, weight=3)
-        main_frame.grid_columnconfigure(1, weight=1)
-
-        # Log Section
-        log_frame = tk.LabelFrame(
-            main_frame,
-            text=self.strings["log_title"],
-            bg="#2d2d2d",
-            fg="white",
-            padx=5,
-            pady=5,
-        )
-        log_frame.grid(row=0, column=0, sticky="nsew", rowspan=2)
-
-        self.text_area = scrolledtext.ScrolledText(
-            log_frame,
-            wrap=tk.WORD,
-            font=("Consolas", 9),
-            bg="#1e1e1e",
-            fg="#dcdcdc",
-            insertbackground="white",
-            bd=0,
-            highlightthickness=0,
-        )
-        self.text_area.pack(fill=tk.BOTH, expand=True)
-
-        # Controls Section
-        controls_frame = tk.LabelFrame(
-            main_frame,
-            text=self.strings["controls_title"],
-            bg="#2d2d2d",
-            fg="white",
-            padx=10,
-            pady=10,
-        )
-        controls_frame.grid(row=0, column=1, sticky="nsew", padx=(10, 0))
-
-        btn_text = self.strings["button_stop"] if self.main_loop_running else self.strings["button_start"]
-        btn_bg = "#f44336" if self.main_loop_running else "#4CAF50"
-        self.start_stop_button = tk.Button(
-            controls_frame,
-            text=btn_text,
+        self.start_stop_btn = ctk.CTkButton(
+            top_ctrl_frame,
+            text=self.strings["button_start"],
             command=self.toggle_main_loop,
-            bg=btn_bg,
-            fg="white",
-            font=("Segoe UI", 10, "bold"),
+            fg_color="#2ecc71",
+            hover_color="#27ae60",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40,
         )
-        self.start_stop_button.pack(fill=tk.X, pady=5)
+        self.start_stop_btn.pack(side="left", padx=8, pady=8, expand=True, fill="x")
 
-        # Logic Settings Section
-        logic_frame = tk.LabelFrame(
-            main_frame,
-            text=self.strings["logic_title"],
-            bg="#2d2d2d",
-            fg="white",
-            padx=10,
-            pady=10,
+        self.skip_btn = ctk.CTkButton(
+            top_ctrl_frame,
+            text=self.strings["button_skip"],
+            command=self.skip_current_item,
+            fg_color="#f39c12",
+            hover_color="#d68910",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40,
         )
-        logic_frame.grid(row=1, column=1, sticky="nsew", padx=(10, 0), pady=(10, 0))
+        self.skip_btn.pack(side="left", padx=8, pady=8, expand=True, fill="x")
 
+        self.cal_btn = ctk.CTkButton(
+            top_ctrl_frame,
+            text=self.strings["button_cal_full"],
+            command=self.start_full_calibration,
+            fg_color="#3498db",
+            hover_color="#2980b9",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            height=40,
+        )
+        self.cal_btn.pack(side="left", padx=8, pady=8, expand=True, fill="x")
+
+        # Metric Cards Frame
+        cards_frame = ctk.CTkFrame(tab_dash)
+        cards_frame.pack(fill="x", padx=10, pady=10)
+        cards_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
+
+        # Card 1: Orders
+        c1 = ctk.CTkFrame(cards_frame, fg_color="#2c3e50")
+        c1.grid(row=0, column=0, padx=6, pady=6, sticky="nsew")
+        ctk.CTkLabel(c1, text=self.strings["card_orders"], font=ctk.CTkFont(size=11)).pack(pady=(8, 2))
+        self.lbl_orders_val = ctk.CTkLabel(c1, text="0", font=ctk.CTkFont(size=20, weight="bold"), text_color="#1abc9c")
+        self.lbl_orders_val.pack(pady=(0, 8))
+
+        # Card 2: Total Silver
+        c2 = ctk.CTkFrame(cards_frame, fg_color="#2c3e50")
+        c2.grid(row=0, column=1, padx=6, pady=6, sticky="nsew")
+        ctk.CTkLabel(c2, text=self.strings["card_total_silver"], font=ctk.CTkFont(size=11)).pack(pady=(8, 2))
+        self.lbl_silver_val = ctk.CTkLabel(c2, text="0 Silver", font=ctk.CTkFont(size=16, weight="bold"), text_color="#f1c40f")
+        self.lbl_silver_val.pack(pady=(0, 8))
+
+        # Card 3: Avg Price
+        c3 = ctk.CTkFrame(cards_frame, fg_color="#2c3e50")
+        c3.grid(row=0, column=2, padx=6, pady=6, sticky="nsew")
+        ctk.CTkLabel(c3, text=self.strings["card_avg_price"], font=ctk.CTkFont(size=11)).pack(pady=(8, 2))
+        self.lbl_avg_val = ctk.CTkLabel(c3, text="0 Silver", font=ctk.CTkFont(size=16, weight="bold"), text_color="#3498db")
+        self.lbl_avg_val.pack(pady=(0, 8))
+
+        # Card 4: Active Time
+        c4 = ctk.CTkFrame(cards_frame, fg_color="#2c3e50")
+        c4.grid(row=0, column=3, padx=6, pady=6, sticky="nsew")
+        ctk.CTkLabel(c4, text=self.strings["card_time_active"], font=ctk.CTkFont(size=11)).pack(pady=(8, 2))
+        self.lbl_time_val = ctk.CTkLabel(c4, text="00:00:00", font=ctk.CTkFont(size=16, weight="bold"), text_color="#e67e22")
+        self.lbl_time_val.pack(pady=(0, 8))
+
+        # Quick Log Area in Dashboard
+        ctk.CTkLabel(tab_dash, text="Live Log", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=12, pady=(8, 0))
+        self.text_area = ctk.CTkTextbox(tab_dash, font=("Consolas", 11), wrap="word")
+        self.text_area.pack(fill="both", expand=True, padx=10, pady=8)
+
+        # Bottom Actions Frame
+        btm_frame = ctk.CTkFrame(tab_dash, fg_color="transparent")
+        btm_frame.pack(fill="x", padx=10, pady=(0, 5))
+        ctk.CTkButton(btm_frame, text=self.strings["button_export_csv"], command=self.export_stats_csv).pack(side="left", padx=5)
+        ctk.CTkButton(btm_frame, text=self.strings["button_reset_stats"], command=self.reset_session_stats, fg_color="#7f8c8d").pack(side="left", padx=5)
+        self.status_lbl = ctk.CTkLabel(btm_frame, text=self.strings["status_ready"], text_color="#2ecc71", font=ctk.CTkFont(weight="bold"))
+        self.status_lbl.pack(side="right", padx=10)
+
+        # TAB PRICING
+        ctk.CTkLabel(tab_pricing, text=self.strings["label_strategy"], font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=15, pady=(15, 5))
+        self.strategy_var = ctk.StringVar(value=self.config.get("strategy", "undercut_1"))
+        self.strategy_menu = ctk.CTkSegmentedButton(
+            tab_pricing,
+            values=[self.strings["strategy_undercut_1"], self.strings["strategy_percentage"], self.strings["strategy_tiered"]],
+            command=self._on_strategy_change,
+        )
+        self.strategy_menu.pack(fill="x", padx=15, pady=(0, 15))
+
+        # Discount Slider
         self.fallback_ratio_var = tk.DoubleVar()
-        tk.Label(
-            logic_frame,
-            text=self.strings["label_fallback_ratio"],
-            bg="#2d2d2d",
-            fg="white",
-        ).pack(anchor="w")
-
-        self.fallback_slider_label = tk.Label(
-            logic_frame,
-            text="",
-            bg="#2d2d2d",
-            fg="cyan",
+        ctk.CTkLabel(tab_pricing, text=self.strings["label_fallback_ratio"]).pack(anchor="w", padx=15)
+        self.fallback_lbl = ctk.CTkLabel(tab_pricing, text="", text_color="#1abc9c", font=ctk.CTkFont(weight="bold"))
+        self.fallback_lbl.pack(anchor="w", padx=15)
+        self.fallback_slider = ctk.CTkSlider(
+            tab_pricing, from_=50, to=100, variable=self.fallback_ratio_var,
+            command=lambda v: self.fallback_lbl.configure(text=f"{int(float(v))}%")
         )
-        self.fallback_slider_label.pack(anchor="w")
+        self.fallback_slider.pack(fill="x", padx=15, pady=(0, 15))
 
-        tk.Scale(
-            logic_frame,
-            from_=50,
-            to=100,
-            orient=tk.HORIZONTAL,
-            variable=self.fallback_ratio_var,
-            showvalue=0,
-            bg="#2d2d2d",
-            fg="white",
-            troughcolor="#555",
-            highlightthickness=0,
-            command=lambda v: self.fallback_slider_label.config(text=f"{int(float(v))}%"),
-        ).pack(fill=tk.X, pady=(0, 10))
-
+        # Max Diff Slider
         self.max_diff_var = tk.IntVar()
-        tk.Label(
-            logic_frame,
-            text=self.strings["label_max_diff"],
-            bg="#2d2d2d",
-            fg="white",
-        ).pack(anchor="w")
-
-        self.max_diff_label = tk.Label(
-            logic_frame,
-            text="",
-            bg="#2d2d2d",
-            fg="cyan",
+        ctk.CTkLabel(tab_pricing, text=self.strings["label_max_diff"]).pack(anchor="w", padx=15)
+        self.max_diff_lbl = ctk.CTkLabel(tab_pricing, text="", text_color="#1abc9c", font=ctk.CTkFont(weight="bold"))
+        self.max_diff_lbl.pack(anchor="w", padx=15)
+        self.max_diff_slider = ctk.CTkSlider(
+            tab_pricing, from_=5, to=100, variable=self.max_diff_var,
+            command=lambda v: self.max_diff_lbl.configure(text=f"{int(float(v))}%")
         )
-        self.max_diff_label.pack(anchor="w")
+        self.max_diff_slider.pack(fill="x", padx=15, pady=(0, 15))
 
-        tk.Scale(
-            logic_frame,
-            from_=5,
-            to=100,
-            orient=tk.HORIZONTAL,
-            variable=self.max_diff_var,
-            showvalue=0,
-            bg="#2d2d2d",
-            fg="white",
-            troughcolor="#555",
-            highlightthickness=0,
-            command=lambda v: self.max_diff_label.config(text=f"{int(float(v))}%"),
-        ).pack(fill=tk.X, pady=(0, 10))
+        # Floor Price Input
+        ctk.CTkLabel(tab_pricing, text=self.strings["label_floor_price"]).pack(anchor="w", padx=15)
+        self.floor_price_entry = ctk.CTkEntry(tab_pricing, placeholder_text="0")
+        self.floor_price_entry.pack(anchor="w", padx=15, pady=(0, 15), fill="x")
 
-        # Status Bar
-        status_frame = tk.Frame(self.root, bg="#1e1e1e", height=25)
-        status_frame.pack(fill=tk.X)
+        # Save Button in Pricing
+        ctk.CTkButton(tab_pricing, text=self.strings["button_save_config"], command=self.save_config).pack(anchor="e", padx=15, pady=10)
 
-        self.status_label = tk.Label(
-            status_frame,
-            text=self.strings["status_ready"],
-            bg="#1e1e1e",
-            fg="white",
-        )
-        self.status_label.pack(side=tk.LEFT, padx=10)
+        # TAB ANTI-BOT
+        ctk.CTkLabel(tab_anti, text="Humanized Input Controls", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=15, pady=(15, 10))
+        self.human_mouse_var = ctk.BooleanVar(value=self.config.get("human_mouse", True))
+        self.switch_mouse = ctk.CTkSwitch(tab_anti, text=self.strings["switch_human_mouse"], variable=self.human_mouse_var)
+        self.switch_mouse.pack(anchor="w", padx=15, pady=8)
 
-        tk.Label(
-            status_frame,
-            text=self.strings["author_label"],
-            bg="#1e1e1e",
-            fg="#888",
-        ).pack(side=tk.RIGHT, padx=10)
+        self.human_typing_var = ctk.BooleanVar(value=self.config.get("human_typing", True))
+        self.switch_typing = ctk.CTkSwitch(tab_anti, text=self.strings["switch_human_typing"], variable=self.human_typing_var)
+        self.switch_typing.pack(anchor="w", padx=15, pady=8)
 
-        tk.Label(
-            status_frame,
-            text=self.strings["resolution_label"].format(self.screen_width, self.screen_height),
-            bg="#1e1e1e",
-            fg="#888",
-        ).pack(side=tk.RIGHT, padx=10)
+        ctk.CTkLabel(tab_anti, text="Computer Vision & OpenCV", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=15, pady=(20, 10))
+        ctk.CTkButton(tab_anti, text=self.strings["button_tesseract"], command=self.prompt_select_tesseract).pack(anchor="w", padx=15, pady=8)
+
+        # TAB LOGS (Full view)
+        self.full_log_text = ctk.CTkTextbox(tab_log, font=("Consolas", 11), wrap="word")
+        self.full_log_text.pack(fill="both", expand=True, padx=10, pady=10)
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def _setup_standard_gui(self):
+        # Fallback standard Tkinter if customtkinter is not available
+        self.root.title(self.strings["app_title"])
+        self.root.geometry("780x580")
+        self.fallback_ratio_var = tk.DoubleVar()
+        self.max_diff_var = tk.IntVar()
+        self.strategy_var = tk.StringVar(value="undercut_1")
+
+    def _on_strategy_change(self, val):
+        if val == self.strings["strategy_undercut_1"]:
+            self.config["strategy"] = "undercut_1"
+        elif val == self.strings["strategy_tiered"]:
+            self.config["strategy"] = "tiered"
+        else:
+            self.config["strategy"] = "percentage"
 
     def update_gui_from_config(self):
         try:
             self.fallback_ratio_var.set(self.config["logic"]["fallback_ratio"] * 100)
             self.max_diff_var.set(self.config["logic"]["max_difference_percent"])
-            self.fallback_slider_label.config(text=f"{self.fallback_ratio_var.get():.0f}%")
-            self.max_diff_label.config(text=f"{self.max_diff_var.get()}%")
+            self.fallback_lbl.configure(text=f"{self.fallback_ratio_var.get():.0f}%")
+            self.max_diff_lbl.configure(text=f"{self.max_diff_var.get()}%")
+
+            strat = self.config.get("strategy", "undercut_1")
+            if strat == "undercut_1":
+                self.strategy_menu.set(self.strings["strategy_undercut_1"])
+            elif strat == "tiered":
+                self.strategy_menu.set(self.strings["strategy_tiered"])
+            else:
+                self.strategy_menu.set(self.strings["strategy_percentage"])
+
+            if hasattr(self, "floor_price_entry"):
+                self.floor_price_entry.delete(0, tk.END)
+                self.floor_price_entry.insert(0, str(self.config.get("floor_price", 0)))
         except Exception:
             pass
 
@@ -690,18 +810,53 @@ class AutoMarketSeller:
         try:
             self.config["logic"]["fallback_ratio"] = self.fallback_ratio_var.get() / 100.0
             self.config["logic"]["max_difference_percent"] = self.max_diff_var.get()
+            if hasattr(self, "human_mouse_var"):
+                self.config["human_mouse"] = self.human_mouse_var.get()
+            if hasattr(self, "human_typing_var"):
+                self.config["human_typing"] = self.human_typing_var.get()
+            if hasattr(self, "floor_price_entry"):
+                try:
+                    self.config["floor_price"] = max(0, int(self.floor_price_entry.get().strip()))
+                except Exception:
+                    self.config["floor_price"] = 0
         except Exception:
             pass
 
-    def update_status_label(self, text_key, color):
-        self._safe_gui_call(lambda: self.status_label.config(text=self.strings.get(text_key, text_key), fg=color))
+    def update_status_label(self, text_key: str, color: str):
+        def _update():
+            if hasattr(self, "status_lbl"):
+                self.status_lbl.configure(text=self.strings.get(text_key, text_key), text_color=color)
+        self._safe_gui_call(_update)
 
-    def show_help(self):
-        messagebox.showinfo(self.strings["menu_guide"], self.strings["help_text"])
+    def update_dashboard_stats(self):
+        def _update():
+            if hasattr(self, "lbl_orders_val"):
+                self.lbl_orders_val.configure(text=str(self.stats.total_orders))
+                silver_text = f"{self.stats.total_silver:,} Silver" if self.stats.total_silver < 1_000_000 else f"{self.stats.total_silver / 1_000_000:.2f}M Silver"
+                self.lbl_silver_val.configure(text=silver_text)
+                avg_text = f"{self.stats.average_price:,} Silver"
+                self.lbl_avg_val.configure(text=avg_text)
+                self.lbl_time_val.configure(text=self.stats.elapsed_formatted)
+        self._safe_gui_call(_update)
+        self.root.after(1000, self.update_dashboard_stats)
+
+    def export_stats_csv(self):
+        path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV File", "*.csv"), ("All Files", "*.*")],
+            initialfile=f"albion_market_session_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        )
+        if path:
+            self.stats.export_csv(path)
+            messagebox.showinfo("Export Success", self.strings["export_success"].format(path))
+
+    def reset_session_stats(self):
+        self.stats.reset()
+        self.update_dashboard_stats()
 
     def prompt_select_tesseract(self):
         path = filedialog.askopenfilename(
-            title=self.strings["tesseract_select_prompt"],
+            title="Select tesseract.exe",
             filetypes=[("Tesseract Executable", "tesseract.exe"), ("All Executables", "*.exe")],
         )
         if path and os.path.exists(path):
@@ -724,17 +879,19 @@ class AutoMarketSeller:
         if entries:
             try:
                 for item in entries:
-                    self.text_area.insert(tk.END, item + "\n")
-                self.text_area.see(tk.END)
+                    if hasattr(self, "text_area"):
+                        self.text_area.insert(tk.END, item + "\n")
+                        self.text_area.see(tk.END)
+                    if hasattr(self, "full_log_text"):
+                        self.full_log_text.insert(tk.END, item + "\n")
+                        self.full_log_text.see(tk.END)
             except Exception:
                 pass
         self.root.after(200, self.update_log_area)
 
+    # --- CALIBRATION ---
     def start_full_calibration(self):
         self._start_calibration_process(list(self.strings["region_map"].keys()))
-
-    def start_single_calibration(self, region_key):
-        self._start_calibration_process([region_key])
 
     def _start_calibration_process(self, region_list):
         with self.state_lock:
@@ -747,7 +904,7 @@ class AutoMarketSeller:
             self.current_drag_box = None
             self.is_dragging = False
 
-        self.update_status_label("status_calibrating", "orange")
+        self.update_status_label("status_calibrating", "#e67e22")
         self.log_message("CALIBRATE", self.strings["log_cal_start"])
         self.log_message("HINT", self.strings["log_cal_hint"])
         self._safe_gui_call(self.create_instruction_window)
@@ -816,27 +973,9 @@ class AutoMarketSeller:
             rel_x1, rel_y1 = (x1 / self.screen_width * 100), (y1 / self.screen_height * 100)
             rel_x2, rel_y2 = (x2 / self.screen_width * 100), (y2 / self.screen_height * 100)
             self.config["regions"][current_region] = {"x1": rel_x1, "y1": rel_y1, "x2": rel_x2, "y2": rel_y2}
-            self.log_message(
-                "CALIBRATE",
-                self.strings["log_cal_area_saved"].format(
-                    self.strings["region_map"][current_region],
-                    rel_x1,
-                    rel_y1,
-                    rel_x2,
-                    rel_y2,
-                ),
-            )
         else:
             rel_x, rel_y = (x / self.screen_width * 100), (y / self.screen_height * 100)
             self.config["regions"][current_region] = {"x": rel_x, "y": rel_y}
-            self.log_message(
-                "CALIBRATE",
-                self.strings["log_cal_point_saved"].format(
-                    self.strings["region_map"][current_region],
-                    rel_x,
-                    rel_y,
-                ),
-            )
 
         self.drag_start_point = None
         self.current_drag_box = None
@@ -864,7 +1003,7 @@ class AutoMarketSeller:
                 pass
             self.instruction_window = None
 
-        self.update_status_label("status_ready", "white")
+        self.update_status_label("status_ready", "#2ecc71")
         if cancelled:
             self.log_message("CALIBRATE", self.strings["log_cal_cancel"])
         else:
@@ -872,7 +1011,6 @@ class AutoMarketSeller:
             self.log_message("CALIBRATE", self.strings["log_cal_done"])
 
     def handle_esc_key(self):
-        # Only cancel calibration when calibration mode is active (avoids global Esc hijacking)
         if self.calibration_active:
             self._safe_gui_call(lambda: self.finish_calibration(cancelled=True))
 
@@ -890,7 +1028,7 @@ class AutoMarketSeller:
     def skip_current_item(self):
         if self.main_loop_running:
             self.skip_iteration_event.set()
-            self.log_message("SKIP", self.strings["log_cycle_skip_user"])
+            self.log_message("SKIP", self.strings["log_cycle_skip"])
 
     def test_price_recognition(self):
         if self.main_loop_running or self.calibration_active:
@@ -927,7 +1065,6 @@ class AutoMarketSeller:
                 self.current_drag_box = (x, y)
                 self._safe_gui_call(self._update_selection_rectangle)
             elif self.is_dragging and not keyboard.is_pressed("shift"):
-                # Retain drag coordinates so user can right-click confirm after releasing Shift
                 self.is_dragging = False
 
         self.mouse_listener = mouse.Listener(on_click=self.handle_calibration_click, on_move=on_move)
@@ -952,13 +1089,7 @@ class AutoMarketSeller:
         self.selection_canvas.delete("selection_rect")
         x1, y1 = self.drag_start_point
         x2, y2 = self.current_drag_box
-        self.selection_canvas.create_rectangle(
-            x1, y1, x2, y2,
-            fill="#ff3333",
-            outline="#ff0000",
-            width=2,
-            tag="selection_rect",
-        )
+        self.selection_canvas.create_rectangle(x1, y1, x2, y2, fill="#ff3333", outline="#ff0000", width=2, tag="selection_rect")
 
     def _destroy_selection_overlay(self):
         if self.selection_overlay:
@@ -976,17 +1107,15 @@ class AutoMarketSeller:
 
             if self.main_loop_running:
                 self.stop_worker_event.set()
-                self.log_message("STOP", self.strings["log_main_stop_user"])
+                self.log_message("STOP", self.strings["log_main_stop"])
             else:
-                # Validation check: ensure regions are calibrated before starting
                 uncalibrated = [
                     k for k, v in self.config["regions"].items()
                     if ("x" in v and v["x"] == 0 and v["y"] == 0) or
                        ("x1" in v and v["x1"] == 0 and v["x2"] == 0)
                 ]
                 if uncalibrated:
-                    msg = "Please calibrate the interface (F1) before starting the cycle!\nMissing regions: " + ", ".join(uncalibrated)
-                    messagebox.showwarning("Calibration Needed", msg)
+                    messagebox.showwarning("Calibration Needed", "Please calibrate the interface (F1) before starting the cycle!")
                     return
 
                 self.main_loop_running = True
@@ -995,11 +1124,11 @@ class AutoMarketSeller:
                 self.main_loop_thread = threading.Thread(target=self.run_main_loop, daemon=True)
                 self.main_loop_thread.start()
                 self.log_message("START", self.strings["log_main_start"])
-                self.start_stop_button.config(text=self.strings["button_stop"], bg="#f44336")
-                self.update_status_label("status_running", "#4CAF50")
+                if hasattr(self, "start_stop_btn"):
+                    self.start_stop_btn.configure(text=self.strings["button_stop"], fg_color="#e74c3c", hover_color="#c0392b")
+                self.update_status_label("status_running", "#2ecc71")
 
     def interruptible_sleep(self, duration):
-        """Sleep that wakes up immediately if stop or skip is requested."""
         end_time = time.time() + duration
         while time.time() < end_time:
             if self.stop_worker_event.is_set() or self.skip_iteration_event.is_set():
@@ -1021,12 +1150,13 @@ class AutoMarketSeller:
                 int(self.screen_height * region["y"] / 100.0),
             )
 
-    def _get_random_sleep(self, action):
-        sleep_config = self.config["sleep"].get(action, {"min": 0.05, "max": 0.05})
-        return random.uniform(sleep_config["min"], sleep_config["max"])
+    def _click_target(self, region_name):
+        x, y = self._get_absolute_coords(region_name)
+        human_enabled = self.config.get("human_mouse", True)
+        human_move_to(x, y, enabled=human_enabled)
+        pyautogui.click(x, y)
 
     def _preprocess_variants(self, pil_image):
-        """Generates multiple high-quality binarized variants optimized for OCR."""
         img_np = np.array(pil_image)
         if len(img_np.shape) == 3:
             gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
@@ -1039,31 +1169,21 @@ class AutoMarketSeller:
         resized = cv2.resize(gray, (width, height), interpolation=cv2.INTER_CUBIC)
 
         variants = []
-
-        # Variant 1: Adaptive Gaussian threshold with proportional block size
         block_size = max(15, (resized.shape[0] // 4) * 2 + 1)
         blurred = cv2.GaussianBlur(resized, (3, 3), 0)
         thresh_adapt = cv2.adaptiveThreshold(
             blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, 3
         )
         variants.append(thresh_adapt)
-
-        # Variant 2: Inverted adaptive threshold (for light gold/white text on dark background)
         variants.append(cv2.bitwise_not(thresh_adapt))
 
-        # Variant 3: Otsu thresholding with CLAHE contrast boost
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         contrast = clahe.apply(resized)
         _, thresh_otsu = cv2.threshold(contrast, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         variants.append(thresh_otsu)
-
-        # Variant 4: Inverted Otsu
         variants.append(cv2.bitwise_not(thresh_otsu))
 
         return [Image.fromarray(v) for v in variants]
-
-    def _parse_number(self, text):
-        return parse_albion_number(text)
 
     def _recognize_number(self, region_name):
         return self._robust_recognize_number(region_name)
@@ -1071,20 +1191,17 @@ class AutoMarketSeller:
     def _robust_recognize_number(self, region_name):
         results = []
         attempts = self.config["logic"]["robust_attempts"]
-        psm_configs = ["--psm 7", "--psm 8", "--psm 6", "--psm 11"]
+        psm_configs = ["--psm 7", "--psm 8", "--psm 6"]
         whitelist = self.config["ocr"]["whitelist_digits"]
-
-        self.log_message("INFO", self.strings["ocr_robust_start"].format(attempts))
 
         try:
             x1, y1, x2, y2 = self._get_absolute_coords(region_name)
             if x2 <= x1 or y2 <= y1:
-                self.log_message("ERROR", f"Invalid coordinates for {region_name}")
                 return None
             img = ImageGrab.grab(bbox=(x1, y1, x2, y2))
             variants = self._preprocess_variants(img)
         except Exception as e:
-            self.log_message("ERROR", f"Screen grab failed: {e}")
+            self.log_message("ERROR", f"Screen grab error: {e}")
             return None
 
         for i in range(attempts):
@@ -1097,49 +1214,42 @@ class AutoMarketSeller:
 
             try:
                 raw_text = pytesseract.image_to_string(processed_img, config=tess_config).strip()
-                parsed = self._parse_number(raw_text)
-                self.log_message(
-                    "DEBUG",
-                    self.strings["ocr_robust_attempt"].format(i + 1, psm, raw_text, parsed),
-                )
+                parsed = parse_albion_number(raw_text)
                 if parsed is not None:
                     results.append(parsed)
-            except Exception as e:
-                self.log_message("ERROR", f"OCR attempt failed: {e}")
+            except Exception:
+                pass
 
-            if self.interruptible_sleep(self._get_random_sleep("robust_recognition")):
+            sleep_time = get_gaussian_delay(0.015, 0.035)
+            if self.interruptible_sleep(sleep_time):
                 break
 
         if not results:
-            self.log_message("ERROR", self.strings["ocr_no_valid_results"])
             return None
 
         counter = Counter(results)
         most_common, count = counter.most_common(1)[0]
         min_count = self.config["logic"]["min_majority_count"]
 
-        # Accept if count meets threshold or if there are strong consistent matches
         if count >= min_count or (len(results) >= 2 and count == len(results)):
-            self.log_message("SUCCESS", self.strings["ocr_majority_found"].format(most_common, count))
             return most_common
-        else:
-            self.log_message("WARNING", self.strings["ocr_majority_fail"].format(most_common, count, min_count))
-            return None
+        return most_common if count >= 2 else None
 
+    # --- MAIN AUTOMATION LOOP ---
     def run_main_loop(self):
         while not self.stop_worker_event.is_set():
             self.skip_iteration_event.clear()
             try:
                 # 1. Click Sell Tab
-                pyautogui.click(self._get_absolute_coords("sell_button"))
-                if self.interruptible_sleep(self._get_random_sleep("between_clicks")):
+                self._click_target("sell_button")
+                if self.interruptible_sleep(get_gaussian_delay(0.05, 0.08)):
                     if self.stop_worker_event.is_set():
                         break
                     continue
 
                 # 2. Click Sell Order Tab
-                pyautogui.click(self._get_absolute_coords("order_button"))
-                if self.interruptible_sleep(self._get_random_sleep("between_clicks")):
+                self._click_target("order_button")
+                if self.interruptible_sleep(get_gaussian_delay(0.05, 0.08)):
                     if self.stop_worker_event.is_set():
                         break
                     continue
@@ -1152,7 +1262,7 @@ class AutoMarketSeller:
                     continue
 
                 if number1:
-                    self.log_message("SUCCESS", self.strings["main_num1_ok"].format(number1))
+                    self.log_message("INFO", self.strings["main_num1_ok"].format(number1))
                 else:
                     self.log_message("WARNING", self.strings["main_num1_fail"])
 
@@ -1163,63 +1273,65 @@ class AutoMarketSeller:
                 if self.skip_iteration_event.is_set():
                     continue
 
-                if not number2:
+                if not number2 and not number1:
                     self.log_message("ERROR", self.strings["main_num2_fail"])
-                    if self.interruptible_sleep(self._get_random_sleep("between_cycles")):
+                    if self.interruptible_sleep(get_gaussian_delay(0.3, 0.5)):
                         if self.stop_worker_event.is_set():
                             break
                     continue
 
-                self.log_message("INFO", self.strings["main_num2_ok"].format(number2))
+                if number2:
+                    self.log_message("INFO", self.strings["main_num2_ok"].format(number2))
 
-                # Read logic values safely
+                # Strategy calculation
+                strategy = self.config.get("strategy", "undercut_1")
                 fallback_ratio = self.fallback_ratio_var.get() / 100.0
                 max_diff_percent = float(self.max_diff_var.get())
+                floor_price = self.config.get("floor_price", 0)
 
                 result, reason, diff = calculate_sell_price(
-                    number1, number2, fallback_ratio, max_diff_percent
+                    number1,
+                    number2,
+                    fallback_ratio=fallback_ratio,
+                    max_diff_percent=max_diff_percent,
+                    strategy=strategy,
+                    floor_price=floor_price,
                 )
-
-                if reason == "fallback_avg":
-                    self.log_message("FALLBACK", self.strings["main_fallback"].format(fallback_ratio * 100, number2, result))
-                elif reason == "fallback_num1":
-                    self.log_message("FALLBACK", self.strings["main_fallback_num1"].format(fallback_ratio * 100, number1, result))
-                elif reason == "diff_protected":
-                    self.log_message("INFO", self.strings["main_diff_check"].format(max_diff_percent, diff))
-                    self.log_message("SUCCESS", self.strings["main_result_from_refined"].format(fallback_ratio * 100, result))
-                else:
-                    self.log_message("SUCCESS", self.strings["main_result_from_close"].format(diff, fallback_ratio * 100, result))
 
                 if result <= 0:
                     result = 1
 
-                # 5. Focus Price Input Field and Clear Existing Text
-                pyautogui.click(self._get_absolute_coords("price_input"))
-                if self.interruptible_sleep(self._get_random_sleep("before_input")):
+                # 5. Clear and Type New Price
+                self._click_target("price_input")
+                if self.interruptible_sleep(get_gaussian_delay(0.04, 0.07)):
                     if self.stop_worker_event.is_set():
                         break
                     continue
 
-                # Clear previous number completely before typing
+                # Clear previous input
                 pyautogui.hotkey("ctrl", "a")
                 pyautogui.press("backspace")
-                time.sleep(0.04)
+                time.sleep(0.03)
 
-                # Type new price
-                pyautogui.write(str(result))
-                if self.interruptible_sleep(self._get_random_sleep("between_clicks")):
+                # Type sanitized price
+                human_typing_enabled = self.config.get("human_typing", True)
+                human_type(str(result), enabled=human_typing_enabled)
+
+                if self.interruptible_sleep(get_gaussian_delay(0.04, 0.08)):
                     if self.stop_worker_event.is_set():
                         break
                     continue
 
-                # 6. Click Create Order Button
-                pyautogui.click(self._get_absolute_coords("submit_button"))
-                if self.interruptible_sleep(self._get_random_sleep("after_input")):
+                # 6. Click Submit Order
+                self._click_target("submit_button")
+                if self.interruptible_sleep(get_gaussian_delay(0.12, 0.18)):
                     if self.stop_worker_event.is_set():
                         break
                     continue
 
-                self.log_message("ACTION", self.strings["main_value_entered"].format(result))
+                # Record statistics
+                self.stats.record_sale(price=result, strategy=strategy, reason=reason, diff_percent=diff)
+                self.log_message("ACTION", self.strings["main_value_entered"].format(result, strategy))
 
             except pyautogui.FailSafeException:
                 self.log_message("WARNING", self.strings["main_failsafe"])
@@ -1227,17 +1339,16 @@ class AutoMarketSeller:
             except Exception as e:
                 self.log_message("ERROR", self.strings["main_critical_error"].format(e))
 
-            if self.interruptible_sleep(self._get_random_sleep("between_cycles")):
+            if self.interruptible_sleep(get_gaussian_delay(0.4, 0.6)):
                 if self.stop_worker_event.is_set():
                     break
 
-        # Reset loop state when finished
         with self.state_lock:
             self.main_loop_running = False
 
         self._safe_gui_call(lambda: [
-            self.start_stop_button.config(text=self.strings["button_start"], bg="#4CAF50"),
-            self.update_status_label("status_ready", "white"),
+            self.start_stop_btn.configure(text=self.strings["button_start"], fg_color="#2ecc71", hover_color="#27ae60") if hasattr(self, "start_stop_btn") else None,
+            self.update_status_label("status_ready", "#2ecc71"),
         ])
 
     def on_closing(self):
@@ -1266,8 +1377,8 @@ class AutoMarketSeller:
         sys.exit(0)
 
 
+# --- TESSERACT DETECTION ---
 def detect_tesseract_binary(custom_config_path: str = "") -> str:
-    """Finds the Tesseract executable across known Windows paths and PATH."""
     candidate_paths = [
         custom_config_path,
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
@@ -1278,16 +1389,13 @@ def detect_tesseract_binary(custom_config_path: str = "") -> str:
         shutil.which("tesseract.exe") or "",
         shutil.which("tesseract") or "",
     ]
-
     for p in candidate_paths:
         if p and os.path.isfile(p):
             return p
-
     return ""
 
 
 if __name__ == "__main__":
-    # Load config early to inspect saved tesseract_path if available
     cfg_file = os.path.join(BASE_DIR, "auto_config.json")
     saved_tesseract_path = ""
     if os.path.exists(cfg_file):
@@ -1299,35 +1407,13 @@ if __name__ == "__main__":
             pass
 
     tesseract_path = detect_tesseract_binary(saved_tesseract_path)
+    if tesseract_path:
+        pytesseract.pytesseract.tesseract_cmd = tesseract_path
 
-    if not tesseract_path:
-        root_temp = tk.Tk()
-        root_temp.withdraw()
-        ask_user = messagebox.askyesno(
-            "Tesseract OCR Not Found",
-            "Tesseract OCR executable was not found in standard paths.\n\n"
-            "Would you like to manually browse for tesseract.exe?",
-        )
-        if ask_user:
-            chosen_path = filedialog.askopenfilename(
-                title="Select tesseract.exe",
-                filetypes=[("Tesseract Executable", "tesseract.exe"), ("All Executables", "*.exe")],
-            )
-            if chosen_path and os.path.isfile(chosen_path):
-                tesseract_path = chosen_path
-            else:
-                messagebox.showerror(
-                    "Tesseract OCR Required",
-                    "AutoMarketSeller requires Tesseract OCR to recognize market prices.\n"
-                    "Please install Tesseract OCR and relaunch the application.",
-                )
-                sys.exit(1)
-        else:
-            sys.exit(1)
-        root_temp.destroy()
+    if USE_CUSTOMTKINTER:
+        root = ctk.CTk()
+    else:
+        root = tk.Tk()
 
-    pytesseract.pytesseract.tesseract_cmd = tesseract_path
-
-    root = tk.Tk()
     app = AutoMarketSeller(root)
     root.mainloop()

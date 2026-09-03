@@ -53,7 +53,7 @@ def test_parse_ocr_artifacts():
 def test_calculate_sell_price_normal():
     price, reason, diff = calculate_sell_price(1000, 1050, 0.90, 30.0)
     assert price == 900
-    assert reason == "close"
+    assert reason == "percentage"
 
 
 def test_calculate_sell_price_fallback_avg_only():

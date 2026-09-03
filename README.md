@@ -1,85 +1,89 @@
 [![Build Windows Executable](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/actions/workflows/main.yml/badge.svg)](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/actions/workflows/main.yml) ![Downloads](https://img.shields.io/github/downloads/NobodySan97/AlbionOnline-AutoMarketSeller/total?style=for-the-badge&logo=github&color=green)
 
-# **Albion Online - Auto Market Seller v1.4**
+# **Albion Online - Auto Market Seller v2.0 Pro**
 
-This script automates the process of selling items on the Albion Online market. It automatically recognizes current prices and average values on screen, compares them, applies undercut/discount calculations, and enters your desired selling price (e.g., 10% lower) with anti-undercut trap protections.
-
----
-
-## 🎯 Key Features & Improvements
-
-- ✅ **Robust Multi-Strategy OCR**: Supports multi-filter adaptive and Otsu preprocessing for high accuracy on game fonts.
-- ✅ **Universal Number Support**: Handles both European (`1.500.000` / `1.500`) and US formats (`1,500,000`), decimals, and suffixes: `k`, `K`, `m`, `M`, `t`, `T` (e.g. `686k` = 686,000).
-- ✅ **Smart Anomaly & Undercut Protection**: Protects against 1-silver troll listings and OCR glitches by automatically falling back to average market price when abnormal divergence occurs.
-- ✅ **Safe Input Emulation**: Clears text fields completely before writing to prevent number concatenation errors.
-- ✅ **High-DPI Awareness**: Full native resolution support on Windows 10/11 with display scaling (125%, 150%, 200%).
-- ✅ **Thread-Safe GUI**: Instant Start/Stop/Skip handling with real-time log streaming.
-- ✅ **Dynamic Calibration**: Easily calibrate clickable regions and price areas (via F1).
-- ✅ **Automatic Tesseract Detection & Browser**: Discovers Tesseract in standard folders, LocalAppData, and PATH, or lets you choose it via file dialog.
+Strumento desktop avanzato per l'automazione delle vendite sul mercato di Albion Online. Riconosce i prezzi e le medie di mercato tramite OCR, applica strategie di undercut intelligenti ed emula gli input umani con curve di Bézier e ritardi gaussiani per la massima affidabilità e naturalezza.
 
 ---
 
-> ⚠️ **Important**: This is **not a cheat** and does not interact with the game's internal memory or API. The script only **emulates mouse clicks and keyboard input**, exactly as if you were manually trading.
+## 🎯 Nuove Funzionalità & Miglioramenti v2.0
+
+### 💰 1. Strategie di Prezzo Avanzate
+- **Undercut 1 Silver (`-1 Silver`)**: Imposta il prezzo a `prezzo_minimo - 1` silver per essere in testa all'ordine senza tagliare inutilmente il margine di profitto.
+- **Sconto Percentuale (`%`)**: Applica una percentuale di sconto configurabile (es. 90% del prezzo o della media).
+- **Fasce Dinamiche (`Tiered`)**:
+  - *Oggetti di alto valore (> 1.000.000 Silver)*: Undercut di 1 Silver.
+  - *Oggetti medi (100.000 - 1.000.000 Silver)*: Sconto del 5%.
+  - *Oggetti economici (< 100.000 Silver)*: Sconto standard configurabile (es. 10%).
+- **Prezzo Minimo di Sicurezza (`Floor Price`)**: Soglia minima al di sotto della quale nessun oggetto verrà mai piazzato.
+- **Protezione Undercut Troll / OCR Anomaly**: Riconosce prezzi anomali (es. 1 silver listing o letture errate) e ricorre automaticamente al prezzo medio di mercato.
 
 ---
 
-## 🚀 Installation and Setup
-
-1. Download the executable file from the [Releases](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/releases) section.
-2. Install [Tesseract OCR](https://sourceforge.net/projects/tesseract-ocr.mirror/files/5.5.0/tesseract-ocr-w64-setup-5.5.0.20241111.exe/download) (or via `winget install UB-Mannheim.TesseractOCR`).
-3. Run `AutoMarketSeller.exe`.
-4. Press **F1** to calibrate UI coordinates on your screen.
-5. Press **F4** to start the automatic selling cycle.
+### 🛡️ 2. Umanizzazione Input & Anti-Pattern
+- **Movimenti del Mouse con Curve di Bézier**: Il cursore non si muove in linea retta o istantaneamente, ma segue curve fluide con accelerazione e decelerazione naturale.
+- **Ritardi a Distribuzione Gaussiana**: Tempi di reazione tra click e azioni modellati secondo distribuzioni normali.
+- **Digitazione Naturale**: Intervalli variabili e micro-pause realistiche durante la digitazione dei numeri.
 
 ---
 
-### 🎮 Controls
+### 📊 3. Dashboard Statistiche & Esportazione CSV
+- **Metriche in Tempo Reale**:
+  - 🏷️ **Ordini Creati**: Conteggio totale ordini inseriti.
+  - 💰 **Totale Silver Piazzato**: Valore stimato totale a mercato (in K, M o intero).
+  - 📈 **Prezzo Medio per Ordine**: Media valore singolo ordine.
+  - ⏱️ **Tempo Attivo**: Timer della sessione corrente.
+- **Esportazione CSV**: Salva un report completo di tutte le vendite piazzate con timestamp, prezzo rilevato, strategia e prezzo finale.
 
-| Key | Action |
+---
+
+### 🎨 4. Interfaccia Grafica Moderna (CustomTkinter)
+- Look dark in stile Windows 11 con schede dedicate: **Dashboard**, **Prezzo & Strategia**, **Anti-Bot & Input**, **Log Attività**.
+- Supporto multilingua completo (**Italiano** ed **Inglese**).
+- Gestione DPI automatica per schermi ad alta risoluzione (1080p, 1440p, 4K).
+
+---
+
+## 🎮 Controlli Rapidi
+
+| Tasto | Azione |
 | :--- | :--- |
-| **F1** | **Calibration Mode** (Right-click on interface elements) |
-| **F2** | Test: Recognize "Price" area |
-| **F3** | Test: Recognize "Average Price" area |
-| **F4** | **Start / Stop** the main selling loop |
-| **F5** | **Skip** the current item / cycle iteration without stopping |
-| **Esc** | Cancel active calibration |
+| **F1** | **Modalità Calibrazione Completa** (Click destro sugli elementi UI) |
+| **F2** | Test: Riconoscimento "Prezzo Attuale" |
+| **F3** | Test: Riconoscimento "Prezzo Medio" |
+| **F4** | **Avvia / Ferma** il ciclo di vendita principale |
+| **F5** | **Salta** solo l'oggetto corrente senza interrompere il ciclo |
+| **Esc** | Annulla la calibrazione attiva |
 
 ---
 
-### 🔧 Configuration Parameters (`auto_config.json`)
+## 🚀 Installazione e Avvio
 
-* **fallback_ratio**: The discount coefficient (e.g., `0.90` sets prices to 90% of lowest sell order / average price).
-* **max_difference_percent**: Maximum divergence allowed between current lowest price and average price before anomaly protections activate.
-* **robust_attempts**: Number of OCR filter and PSM attempts for voting consensus.
-* **min_majority_count**: Minimum consensus matches needed for high confidence.
-* **sleep**: Randomized delays to ensure natural input timing.
-
----
-
-### ⚙️ How to Calibrate (First Launch)
-
-1. Open Albion Online and open the Market interface.
-2. Press **F1** to start calibration.
-3. Move your cursor over the **"Sell"** tab and **Right-Click**.
-4. Move your cursor over the **"Sell Order"** button and **Right-Click**.
-5. Move your cursor over the **"Price"** input field and **Right-Click**.
-6. Move your cursor over the **"Create Order"** button and **Right-Click**.
-7. Hold **SHIFT** and drag over the **Current Price** text area, then release and **Right-Click** to confirm.
-8. Hold **SHIFT** and drag over the **Average Price** text area, then release and **Right-Click** to confirm.
-
-Configuration is saved automatically.
+1. Scarica l'eseguibile o clona il repository.
+2. Assicurati che [Tesseract OCR](https://github.com/UB-Mannheim/tesseract/wiki) sia installato.
+3. Installa le dipendenze Python (se esegui da codice sorgente):
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Avvia l'applicazione:
+   ```bash
+   python AutoSeller.py
+   ```
+5. Premi **F1** per calibrare le coordinate sullo schermo, poi premi **F4** per avviare!
 
 ---
 
-### 🧰 Tech Stack
+## 🧪 Test Suite
 
-- Python 3.10+
-- `pyautogui`, `pytesseract`, `Pillow`, `OpenCV (cv2)`, `pynput`, `keyboard`, `tkinter`
-- Multi-threaded architecture with thread-safe UI scheduling and DPI awareness
+Per eseguire i test automatici:
+```bash
+pytest
+============================= 19 passed in 0.33s ==============================
+```
 
 ---
 
-### 💬 Author
+### 💬 Autore
 
-Developed by: **NobodySan97**  
-Refactored & Optimized (2025/2026)
+Sviluppato da: **NobodySan97**  
+Versione: **v2.0 Pro**
