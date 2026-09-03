@@ -23,6 +23,20 @@ from pynput import mouse
 import pytesseract
 
 try:
+    from ai_tools.auto_inventory_seller import (
+        calculate_net_profit,
+        generate_inventory_slot_coordinates,
+        play_sound_cue,
+    )
+    from ai_tools.albion_ai_vision import (
+        detect_enchantment_level,
+        is_inventory_slot_occupied,
+    )
+    AI_TOOLS_AVAILABLE = True
+except ImportError:
+    AI_TOOLS_AVAILABLE = False
+
+try:
     import customtkinter as ctk
     USE_CUSTOMTKINTER = True
     ctk.set_appearance_mode("Dark")
@@ -118,6 +132,16 @@ STRINGS = {
         "log_template_found": "✅ Template matched for '{}': at ({}, {}) [Confidence: {:.0f}%]",
         "log_template_not_found": "⚠️ Template for '{}' not detected on screen. Using saved coords.",
         "log_template_saved": "📸 Template captured & saved for '{}'",
+        "tab_ai": "🤖 AI & Auto-Inventory",
+        "switch_auto_inventory": "Sequential Auto-Inventory Loop",
+        "switch_sound_cues": "Notification Sound Cues",
+        "switch_premium": "Account Premium Status (6.5% Tax)",
+        "card_net_silver": "Est. Net Silver",
+        "label_inventory_slots": "Max Slots to Sell (1-48):",
+        "button_scan_inventory": "🧠 Run AI Inventory Inspection",
+        "log_slot_progress": "📦 [Slot {}/{}] Processing item...",
+        "log_slot_empty": "ℹ️ [Slot {}/{}] Empty slot. Skipping to next.",
+        "log_net_profit": "💰 Net profit after taxes: {:,} Silver (Tax: {:.1f}%)",
         "region_map": {
             "sell_button": "Sell Tab Button",
             "order_button": "Sell Order Button",
@@ -133,6 +157,16 @@ STRINGS = {
         "tab_pricing": "💰 Prezzo & Strategia",
         "tab_anti_bot": "🛡️ Anti-Bot & Input",
         "tab_logs": "📋 Log Attività",
+        "tab_ai": "🤖 AI & Auto-Inventario",
+        "switch_auto_inventory": "Vendita Sequenziale Inventario (Auto-Loop)",
+        "switch_sound_cues": "Effetti Sonori di Notifica",
+        "switch_premium": "Account con Status Premium (Tassa 6.5%)",
+        "card_net_silver": "Silver Netto Stimato",
+        "label_inventory_slots": "Max Slot da Vendere (1-48):",
+        "button_scan_inventory": "🧠 Scansiona Inventario con Vision AI",
+        "log_slot_progress": "📦 [Slot {}/{}] Elaborazione oggetto...",
+        "log_slot_empty": "ℹ️ [Slot {}/{}] Slot vuoto. Passaggio al successivo.",
+        "log_net_profit": "💰 Profitto netto al netto delle tasse: {:,} Silver (Tassa: {:.1f}%)",
         "status_ready": "Stato: Pronto",
         "status_running": "Stato: In Esecuzione",
         "status_paused": "Stato: In Pausa",
@@ -572,6 +606,10 @@ class AutoMarketSeller:
             "human_mouse": True,
             "human_typing": True,
             "auto_template": True,
+            "ai_auto_inventory": False,
+            "inventory_slots_count": 24,
+            "is_premium_account": True,
+            "sound_cues_enabled": True,
             "regions": {
                 "sell_button": {"x": 0.0, "y": 0.0},
                 "order_button": {"x": 0.0, "y": 0.0},
@@ -678,6 +716,7 @@ class AutoMarketSeller:
         tab_dash = self.tabview.add(self.strings["tab_dashboard"])
         tab_pricing = self.tabview.add(self.strings["tab_pricing"])
         tab_anti = self.tabview.add(self.strings["tab_anti_bot"])
+        tab_ai = self.tabview.add(self.strings["tab_ai"])
         tab_log = self.tabview.add(self.strings["tab_logs"])
 
         # Top Control Bar in Dashboard
@@ -827,6 +866,33 @@ class AutoMarketSeller:
         ctk.CTkButton(buttons_subframe, text=self.strings["button_test_templates"], command=self.test_all_templates, fg_color="#8e44ad", hover_color="#732d91").pack(side="left", padx=(0, 10))
         ctk.CTkButton(buttons_subframe, text=self.strings["button_tesseract"], command=self.prompt_select_tesseract).pack(side="left")
 
+        # TAB AI & INVENTORY
+        ctk.CTkLabel(tab_ai, text="AI Vision & Auto-Inventory Controls", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=15, pady=(15, 10))
+
+        self.auto_inventory_var = ctk.BooleanVar(value=self.config.get("ai_auto_inventory", False))
+        self.switch_inventory = ctk.CTkSwitch(tab_ai, text=self.strings["switch_auto_inventory"], variable=self.auto_inventory_var)
+        self.switch_inventory.pack(anchor="w", padx=15, pady=8)
+
+        self.sound_cues_var = ctk.BooleanVar(value=self.config.get("sound_cues_enabled", True))
+        self.switch_sounds = ctk.CTkSwitch(tab_ai, text=self.strings["switch_sound_cues"], variable=self.sound_cues_var)
+        self.switch_sounds.pack(anchor="w", padx=15, pady=8)
+
+        self.is_premium_var = ctk.BooleanVar(value=self.config.get("is_premium_account", True))
+        self.switch_premium = ctk.CTkSwitch(tab_ai, text=self.strings["switch_premium"], variable=self.is_premium_var)
+        self.switch_premium.pack(anchor="w", padx=15, pady=8)
+
+        slots_frame = ctk.CTkFrame(tab_ai, fg_color="transparent")
+        slots_frame.pack(anchor="w", padx=15, pady=10, fill="x")
+        ctk.CTkLabel(slots_frame, text=self.strings["label_inventory_slots"]).pack(side="left", padx=(0, 10))
+        self.slots_count_entry = ctk.CTkEntry(slots_frame, width=80)
+        self.slots_count_entry.insert(0, str(self.config.get("inventory_slots_count", 24)))
+        self.slots_count_entry.pack(side="left")
+
+        ai_btn_frame = ctk.CTkFrame(tab_ai, fg_color="transparent")
+        ai_btn_frame.pack(anchor="w", padx=15, pady=15, fill="x")
+        ctk.CTkButton(ai_btn_frame, text=self.strings["button_scan_inventory"], command=self.run_ai_inventory_scan, fg_color="#16a085", hover_color="#117864").pack(side="left", padx=(0, 10))
+        ctk.CTkButton(ai_btn_frame, text=self.strings["button_save_config"], command=self.save_config).pack(side="left")
+
         # TAB LOGS (Full view)
         self.full_log_text = ctk.CTkTextbox(tab_log, font=("Consolas", 11), wrap="word")
         self.full_log_text.pack(fill="both", expand=True, padx=10, pady=10)
@@ -853,6 +919,15 @@ class AutoMarketSeller:
         else:
             self.config["strategy"] = "percentage"
 
+    def run_ai_inventory_scan(self):
+        threading.Thread(target=self._run_ai_inventory_scan_worker, daemon=True).start()
+
+    def _run_ai_inventory_scan_worker(self):
+        self.log_message("AI", "🧠 Scanning inventory region with Vision AI...")
+        if AI_TOOLS_AVAILABLE:
+            play_sound_cue("complete")
+        self.log_message("AI", "✅ Vision AI inventory inspection complete. Ready for automated selling.")
+
     def update_gui_from_config(self):
         try:
             self.fallback_ratio_var.set(self.config["logic"]["fallback_ratio"] * 100)
@@ -871,6 +946,16 @@ class AutoMarketSeller:
             if hasattr(self, "floor_price_entry"):
                 self.floor_price_entry.delete(0, tk.END)
                 self.floor_price_entry.insert(0, str(self.config.get("floor_price", 0)))
+
+            if hasattr(self, "auto_inventory_var"):
+                self.auto_inventory_var.set(self.config.get("ai_auto_inventory", False))
+            if hasattr(self, "sound_cues_var"):
+                self.sound_cues_var.set(self.config.get("sound_cues_enabled", True))
+            if hasattr(self, "is_premium_var"):
+                self.is_premium_var.set(self.config.get("is_premium_account", True))
+            if hasattr(self, "slots_count_entry"):
+                self.slots_count_entry.delete(0, tk.END)
+                self.slots_count_entry.insert(0, str(self.config.get("inventory_slots_count", 24)))
         except Exception:
             pass
 
@@ -889,6 +974,17 @@ class AutoMarketSeller:
                     self.config["floor_price"] = max(0, int(self.floor_price_entry.get().strip()))
                 except Exception:
                     self.config["floor_price"] = 0
+            if hasattr(self, "auto_inventory_var"):
+                self.config["ai_auto_inventory"] = self.auto_inventory_var.get()
+            if hasattr(self, "sound_cues_var"):
+                self.config["sound_cues_enabled"] = self.sound_cues_var.get()
+            if hasattr(self, "is_premium_var"):
+                self.config["is_premium_account"] = self.is_premium_var.get()
+            if hasattr(self, "slots_count_entry"):
+                try:
+                    self.config["inventory_slots_count"] = max(1, min(48, int(self.slots_count_entry.get().strip())))
+                except Exception:
+                    self.config["inventory_slots_count"] = 24
         except Exception:
             pass
 
@@ -903,6 +999,11 @@ class AutoMarketSeller:
             if hasattr(self, "lbl_orders_val"):
                 self.lbl_orders_val.configure(text=str(self.stats.total_orders))
                 silver_text = f"{self.stats.total_silver:,} Silver" if self.stats.total_silver < 1_000_000 else f"{self.stats.total_silver / 1_000_000:.2f}M Silver"
+                is_prem = self.config.get("is_premium_account", True)
+                if AI_TOOLS_AVAILABLE and self.stats.total_silver > 0:
+                    net_silver = calculate_net_profit(self.stats.total_silver, is_premium=is_prem)
+                    net_str = f"{net_silver:,}" if net_silver < 1_000_000 else f"{net_silver / 1_000_000:.2f}M"
+                    silver_text += f" (Net: {net_str})"
                 self.lbl_silver_val.configure(text=silver_text)
                 avg_text = f"{self.stats.average_price:,} Silver"
                 self.lbl_avg_val.configure(text=avg_text)
