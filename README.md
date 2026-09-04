@@ -1,46 +1,33 @@
 [![Build Windows Executable](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/actions/workflows/main.yml/badge.svg)](https://github.com/NobodySan97/AlbionOnline-AutoMarketSeller/actions/workflows/main.yml) ![Downloads](https://img.shields.io/github/downloads/NobodySan97/AlbionOnline-AutoMarketSeller/total?style=for-the-badge&logo=github&color=green)
 
-# **Albion Online - Auto Market Seller v2.0 Pro**
+# **Albion Online - Auto Market Seller v2.5 Pro (Dual-Mode)**
 
-Strumento desktop avanzato per l'automazione delle vendite sul mercato di Albion Online. Riconosce i prezzi e le medie di mercato tramite OCR, applica strategie di undercut intelligenti ed emula gli input umani con curve di Bézier e ritardi gaussiani per la massima affidabilità e naturalezza.
-
----
-
-## 🎯 Nuove Funzionalità & Miglioramenti v2.0
-
-### 💰 1. Strategie di Prezzo Avanzate
-- **Undercut 1 Silver (`-1 Silver`)**: Imposta il prezzo a `prezzo_minimo - 1` silver per essere in testa all'ordine senza tagliare inutilmente il margine di profitto.
-- **Sconto Percentuale (`%`)**: Applica una percentuale di sconto configurabile (es. 90% del prezzo o della media).
-- **Fasce Dinamiche (`Tiered`)**:
-  - *Oggetti di alto valore (> 1.000.000 Silver)*: Undercut di 1 Silver.
-  - *Oggetti medi (100.000 - 1.000.000 Silver)*: Sconto del 5%.
-  - *Oggetti economici (< 100.000 Silver)*: Sconto standard configurabile (es. 10%).
-- **Prezzo Minimo di Sicurezza (`Floor Price`)**: Soglia minima al di sotto della quale nessun oggetto verrà mai piazzato.
-- **Protezione Undercut Troll / OCR Anomaly**: Riconosce prezzi anomali (es. 1 silver listing o letture errate) e ricorre automaticamente al prezzo medio di mercato.
+Strumento desktop avanzato per l'automazione delle vendite sul mercato di Albion Online. Supporta due modalità operative selezionabili direttamente dall'interfaccia:
+1. **⚡ Modalità Veloce 3-Point**: replica il ciclo di click rapido dal video reference (`Sell` -> `[-] Sconto 1 Silver` -> `Create Order`) ad altissima velocità senza richiedere OCR.
+2. **🧠 Modalità Smart OCR**: legge tramite computer vision e Tesseract OCR il prezzo minimo attuale, calcola lo sconto percentuale desiderato (es. -1%, -2%, -5%, -10% o -1 Silver), protegge con prezzo minimo di sicurezza (`Floor Price`) e digita in modo naturale il prezzo calcolato prima di confermare l'ordine.
 
 ---
 
-### 🛡️ 2. Umanizzazione Input & Anti-Pattern
-- **Movimenti del Mouse con Curve di Bézier**: Il cursore non si muove in linea retta o istantaneamente, ma segue curve fluide con accelerazione e decelerazione naturale.
-- **Ritardi a Distribuzione Gaussiana**: Tempi di reazione tra click e azioni modellati secondo distribuzioni normali.
-- **Digitazione Naturale**: Intervalli variabili e micro-pause realistiche durante la digitazione dei numeri.
+## 🎯 Caratteristiche Principali
 
----
+### ⚡ 1. Selezione Modalità Operativa (Dual-Engine)
+- **Modalità 3-Point Veloce**: setup in 3 click con Wizard guidato, ideale per svuotare interi inventari in pochi secondi sfruttando il pulsante `[-]` di Albion.
+- **Modalità Smart OCR & Sconto %**:
+  - **Sconto Percentuale Personalizzabile**: slider fluido da 0.5% a 25.0%, input numerico e preset rapidi (`[ 1% ]`, `[ 2% ]`, `[ 5% ]`, `[ 10% ]`, `[ -1 Silver ]`).
+  - **Prezzo Minimo di Sicurezza (`Floor Price`)**: impedisce svendite accidentali se il mercato è crollato o se l'OCR rileva troll order.
+  - **Pulsante `Test OCR`**: legge l'area a video e mostra a log sia il prezzo rilevato che il prezzo calcolato con la percentuale scelta.
+  - **Cattura Area Prezzo Intuitiva**: basta fare click su due angoli (in alto a sinistra e in basso a destra) per calibrare l'area OCR.
 
-### 📊 3. Dashboard Statistiche & Esportazione CSV
-- **Metriche in Tempo Reale**:
-  - 🏷️ **Ordini Creati**: Conteggio totale ordini inseriti.
-  - 💰 **Totale Silver Piazzato**: Valore stimato totale a mercato (in K, M o intero).
-  - 📈 **Prezzo Medio per Ordine**: Media valore singolo ordine.
-  - ⏱️ **Tempo Attivo**: Timer della sessione corrente.
-- **Esportazione CSV**: Salva un report completo di tutte le vendite piazzate con timestamp, prezzo rilevato, strategia e prezzo finale.
+### ⌨️ 2. Tasto Rapido Hardware Globale (`GetAsyncKeyState`)
+- **Ascolto a Livello Kernel Windows**: ignora blocchi da anti-cheat (Easy Anti-Cheat) o isolamento dei permessi (UIPI). Funziona anche quando Albion Online è in primo piano, a schermo intero o eseguito come amministratore.
+- **Configurabile da Menu**: puoi selezionare `F10`, `F4`, `F6`, `F8`, `F9`, `F11`, `F12`, `PAUSE` o `INSERT` (perfetto per tastiere da gaming e laptop senza dover premere `Fn`).
+- **Feedback Acustico Istantaneo**: emette un segnale acustico (bip) differente all'avvio e all'arresto per sapere subito che il comando è stato ricevuto.
 
----
-
-### 🎨 4. Interfaccia Grafica Moderna (CustomTkinter)
-- Look dark in stile Windows 11 con schede dedicate: **Dashboard**, **Prezzo & Strategia**, **Anti-Bot & Input**, **Log Attività**.
-- Supporto multilingua completo (**Italiano** ed **Inglese**).
-- Gestione DPI automatica per schermi ad alta risoluzione (1080p, 1440p, 4K).
+### 🛡️ 3. Umanizzazione & Anti-Detection
+- Movimento naturale del mouse tramite curve cubiche di Bézier con velocità variabile.
+- Ritardi a distribuzione gaussiana casuale con jitter ±15%.
+- Digitazione numerica umana con intervalli casuali tra i caratteri.
+- Failsafe protetto da coordinate esterne.
 
 ---
 
