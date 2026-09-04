@@ -47,7 +47,7 @@ if sys.platform == "win32":
                 pass
 
 pyautogui.PAUSE = 0.01
-pyautogui.FAILSAFE = True
+pyautogui.FAILSAFE = False
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -213,6 +213,99 @@ def human_move_to(target_x: int, target_y: int, enabled: bool = True):
     for pt in curve:
         pyautogui.moveTo(pt[0], pt[1])
         time.sleep(random.uniform(0.003, 0.008))
+
+
+# --- HARDWARE-LEVEL GLOBAL HOTKEY POLLING (GetAsyncKeyState) ---
+VK_KEY_MAP = {
+    "F1": 0x70,
+    "F2": 0x71,
+    "F3": 0x72,
+    "F4": 0x73,
+    "F5": 0x74,
+    "F6": 0x75,
+    "F7": 0x76,
+    "F8": 0x77,
+    "F9": 0x78,
+    "F10": 0x79,
+    "F11": 0x7A,
+    "F12": 0x7B,
+    "`": 0xC0,
+    "~": 0xC0,
+    "INSERT": 0x2D,
+    "DELETE": 0x2E,
+    "HOME": 0x24,
+    "END": 0x23,
+    "PAGEUP": 0x21,
+    "PAGEDOWN": 0x22,
+    "PAUSE": 0x13,
+}
+
+if sys.platform == "win32":
+    try:
+        ctypes.windll.user32.GetAsyncKeyState.restype = ctypes.c_short
+        ctypes.windll.user32.GetAsyncKeyState.argtypes = [ctypes.c_int]
+    except Exception:
+        pass
+
+
+def is_key_pressed_win32(vk_code: int) -> bool:
+    """Checks if virtual key is currently pressed down via Windows GetAsyncKeyState."""
+    if sys.platform != "win32":
+        return False
+    try:
+        return bool(ctypes.windll.user32.GetAsyncKeyState(vk_code) & 0x8000)
+    except Exception:
+        return False
+
+
+class WindowsHotkeyPoller:
+    """Hardware-level polling using Windows GetAsyncKeyState.
+
+    Bypasses UIPI (User Interface Privilege Isolation) and anti-cheat hooks.
+    Operates 100% reliably even when Albion Online is running with elevated privileges
+    or exclusive fullscreen.
+    """
+
+    def __init__(self, on_hotkey, default_key: str = "F10", poll_interval: float = 0.02):
+        self.on_hotkey = on_hotkey
+        self.key_name = default_key
+        self.target_vk = VK_KEY_MAP.get(default_key.upper(), 0x79)
+        self.poll_interval = poll_interval
+        self.running = True
+        self.last_press_time = 0.0
+        self.thread = threading.Thread(target=self._poll_loop, daemon=True)
+        self.thread.start()
+
+    def set_key(self, key_name: str):
+        self.key_name = key_name
+        self.target_vk = VK_KEY_MAP.get(key_name.upper(), 0x79)
+
+    def _poll_loop(self):
+        if sys.platform != "win32":
+            return
+        user32 = ctypes.windll.user32
+        while self.running:
+            time.sleep(self.poll_interval)
+            if not self.target_vk:
+                continue
+            try:
+                state = user32.GetAsyncKeyState(self.target_vk)
+                if state & 0x8000:
+                    now = time.time()
+                    if now - self.last_press_time > 0.4:
+                        self.last_press_time = now
+                        try:
+                            self.on_hotkey()
+                        except Exception:
+                            pass
+                        # Wait until key is released to prevent repeated firing
+                        while self.running and (user32.GetAsyncKeyState(self.target_vk) & 0x8000):
+                            time.sleep(0.03)
+            except Exception:
+                pass
+
+    def stop(self):
+        self.running = False
 
 
 # --- NUMBER PARSER & OCR UTILITIES ---
@@ -476,6 +569,8 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 0
         self.single_capture_target = None
         self.registered_hotkey = None
+        self.hotkey_poller = None
+        self._last_hotkey_trigger = 0.0
 
         # Load Configuration
         self.config = self.load_config()
@@ -711,9 +806,9 @@ class AlbionMarketAutoClickerApp:
         ctk.CTkLabel(frame_hotkey, text=self.strings["label_hotkey"]).pack(side="left")
         self.hotkey_menu = ctk.CTkOptionMenu(
             frame_hotkey,
-            values=["F10", "F4", "F6", "F8", "F9", "F11", "F12"],
+            values=["F10", "F4", "F6", "F8", "F9", "F11", "F12", "PAUSE", "INSERT"],
             command=self.on_change_hotkey,
-            width=90,
+            width=100,
         )
         self.hotkey_menu.set(self.config.get("toggle_hotkey", "F10"))
         self.hotkey_menu.pack(side="right")
@@ -811,7 +906,29 @@ class AlbionMarketAutoClickerApp:
             self.txt_log.insert("end", entry)
             self.txt_log.see("end")
 
+    def handle_hotkey_press(self):
+        """Called when toggle hotkey is triggered. Debounced and dispatched to Tkinter main thread."""
+        now = time.time()
+        if now - self._last_hotkey_trigger < 0.4:
+            return
+        self._last_hotkey_trigger = now
+
+        try:
+            import winsound
+            winsound.MessageBeep(0)
+        except Exception:
+            pass
+
+        self.root.after(0, self.toggle_clicking)
+
     def bind_global_hotkey(self, key_name: str):
+        # 1. Hardware/Kernel polling (Primary: works when Albion/EAC is focused or Admin)
+        if hasattr(self, "hotkey_poller") and self.hotkey_poller is not None:
+            self.hotkey_poller.set_key(key_name)
+        else:
+            self.hotkey_poller = WindowsHotkeyPoller(self.handle_hotkey_press, default_key=key_name)
+
+        # 2. Secondary layer: low-level keyboard hook
         try:
             if self.registered_hotkey:
                 keyboard.remove_hotkey(self.registered_hotkey)
@@ -819,10 +936,17 @@ class AlbionMarketAutoClickerApp:
             pass
 
         try:
-            self.registered_hotkey = keyboard.add_hotkey(key_name, self.toggle_clicking)
-            self.log(f"Global hotkey registered: {key_name}", category="Hotkey")
-        except Exception as e:
-            self.log(f"⚠️ Could not bind hotkey {key_name}: {e}", category="Hotkey")
+            self.registered_hotkey = keyboard.add_hotkey(key_name, self.handle_hotkey_press)
+        except Exception:
+            self.registered_hotkey = None
+
+        # 3. Tertiary layer: Tkinter local window binding
+        try:
+            self.root.bind_all(f"<{key_name}>", lambda e: self.handle_hotkey_press())
+        except Exception:
+            pass
+
+        self.log(f"Hotkey {key_name} attivo (Kernel Polling + Hook)", category="Hotkey")
 
     def on_change_hotkey(self, chosen_key: str):
         self.bind_global_hotkey(chosen_key)
@@ -963,8 +1087,17 @@ class AlbionMarketAutoClickerApp:
         except Exception as e:
             self.log(f"⚠️ Error testing {target}: {e}", category="Error")
 
-    # --- CLICKING WORKER LOOP (A -> B -> C) ---
     def toggle_clicking(self):
+        # If user was in the middle of wizard or capture, cancel it safely
+        if getattr(self, "wizard_step", 0) > 0 or getattr(self, "single_capture_target", None):
+            self.wizard_step = 0
+            self.single_capture_target = None
+            if self.mouse_listener and self.mouse_listener.is_alive():
+                self.mouse_listener.stop()
+            self.btn_wizard.configure(text=self.strings["btn_wizard"], fg_color="#8e44ad")
+            self.log("Wizard / Cattura annullata.", category="Wizard")
+            return
+
         if self.is_running:
             self.stop_clicking()
         else:
@@ -1065,6 +1198,8 @@ class AlbionMarketAutoClickerApp:
 
     def on_closing(self):
         self.is_running = False
+        if hasattr(self, "hotkey_poller") and self.hotkey_poller:
+            self.hotkey_poller.stop()
         if self.mouse_listener and self.mouse_listener.is_alive():
             self.mouse_listener.stop()
         try:

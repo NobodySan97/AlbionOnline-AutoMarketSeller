@@ -11,6 +11,8 @@ from AutoSeller import (
     get_gaussian_delay,
     generate_bezier_curve,
     STRINGS,
+    VK_KEY_MAP,
+    WindowsHotkeyPoller,
 )
 
 
@@ -50,3 +52,18 @@ def test_3point_strings_parity():
     assert en_keys == it_keys
     for key in en_keys:
         assert key in STRINGS["it"]
+
+
+def test_vk_key_map_and_poller():
+    assert VK_KEY_MAP["F10"] == 0x79
+    assert VK_KEY_MAP["F4"] == 0x73
+    assert VK_KEY_MAP["F9"] == 0x78
+    assert VK_KEY_MAP["PAUSE"] == 0x13
+    assert VK_KEY_MAP["INSERT"] == 0x2D
+
+    triggered = []
+    poller = WindowsHotkeyPoller(lambda: triggered.append(True), default_key="F10")
+    assert poller.target_vk == 0x79
+    poller.set_key("F4")
+    assert poller.target_vk == 0x73
+    poller.stop()
