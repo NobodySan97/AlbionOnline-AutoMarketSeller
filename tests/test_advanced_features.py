@@ -125,6 +125,16 @@ def test_session_stats():
     assert stats.total_silver == 35000
     assert stats.average_price == 17500
     assert len(stats.records) == 2
+    assert len(stats.orders) == 2  # Backward-compatible property alias
+    assert stats.orders is stats.records  # Zero duplicate memory allocation
+
+    # Test bounded capacity doesn't leak memory on high volume
+    stats.MAX_IN_MEMORY_RECORDS = 5
+    stats.records = type(stats.records)(maxlen=5)
+    for i in range(10):
+        stats.record_sale(price=100, item_name=f"Item {i}")
+    assert len(stats.records) == 5
+    assert stats.total_orders == 12
 
 
 def test_detect_tesseract_custom_path(tmp_path):

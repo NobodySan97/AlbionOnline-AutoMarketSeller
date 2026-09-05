@@ -98,3 +98,19 @@ def test_dual_mode_config_merge():
     assert merged["floor_price"] == 2500
     assert merged["ocr_price_box"]["x1"] == 55
     assert merged["pos_a"]["x"] == 10
+
+
+def test_ocr_reader_invalid_bbox():
+    # Inverted or degenerate bbox returns None immediately without subprocess call
+    assert OcrReader.read_number_from_bbox((100, 100, 50, 50)) is None
+    assert OcrReader.read_number_from_bbox((100, 100, 100, 100)) is None
+
+
+def test_async_beep_non_blocking():
+    from AutoSeller import async_beep
+    import time
+    start = time.perf_counter()
+    async_beep(1000, 200)
+    elapsed = time.perf_counter() - start
+    # Should return within 10ms instead of blocking for 200ms
+    assert elapsed < 0.05
