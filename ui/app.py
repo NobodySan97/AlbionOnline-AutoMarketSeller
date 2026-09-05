@@ -97,85 +97,96 @@ class AlbionMarketAutoClickerApp:
         self.log(self.strings["status_ready"], category="System")
 
     def load_config(self) -> dict:
-        default_cfg = {
-            "language": "it",
-            "mode": "3point",  # "3point" or "ocr"
-            "pos_a": {"x": 2119, "y": 571},
-            "pos_b": {"x": 1194, "y": 841},
-            "pos_c": {"x": 1612, "y": 972},
-            "ocr_pos_sell": {"x": 2119, "y": 571},
-            "ocr_price_box": {"x1": 1150, "y1": 420, "x2": 1300, "y2": 455},
-            "ocr_price_input": {"x": 1250, "y": 841},
-            "ocr_create_order": {"x": 1612, "y": 972},
-            "toggle_hotkey": "F10",
-            "discount_percent": 1.0,
-            "strategy": "percentage",
-            "floor_price": 0,
-            "delay_ab_ms": 300,
-            "delay_bc_ms": 200,
-            "delay_ca_ms": 400,
-            "delay_ocr_ms": 250,
-            "human_mouse": True,
-            "human_typing": True,
-            "jitter": True,
-            "max_items": 0,
-            "tesseract_path": "",
-            "auto_template": False,
-            "logic": {"fallback_ratio": 0.90, "max_difference_percent": 30},
-        }
+        default_cfg = deep_merge_config(DEFAULT_CONFIG, {})
         if os.path.isfile(self.CONFIG_FILE):
             try:
                 with open(self.CONFIG_FILE, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    default_cfg = deep_merge_config(default_cfg, data)
+                    if isinstance(data, dict):
+                        default_cfg = deep_merge_config(default_cfg, data)
             except Exception:
                 pass
         return default_cfg
 
     def save_config(self):
         try:
+            def _safe_int(entry, default_val):
+                try:
+                    txt = entry.get().strip()
+                    return int(txt) if txt else default_val
+                except (ValueError, TypeError, AttributeError):
+                    return default_val
+
+            def _safe_float(entry, default_val):
+                try:
+                    txt = entry.get().replace("%", "").strip()
+                    return float(txt) if txt else default_val
+                except (ValueError, TypeError, AttributeError):
+                    return default_val
+
             # 3-Point Coordinates
-            if hasattr(self, "entry_pos_a_x"):
-                self.config["pos_a"] = {"x": int(self.entry_pos_a_x.get()), "y": int(self.entry_pos_a_y.get())}
-                self.config["pos_b"] = {"x": int(self.entry_pos_b_x.get()), "y": int(self.entry_pos_b_y.get())}
-                self.config["pos_c"] = {"x": int(self.entry_pos_c_x.get()), "y": int(self.entry_pos_c_y.get())}
+            if hasattr(self, "entry_pos_a_x") and hasattr(self, "entry_pos_a_y"):
+                self.config["pos_a"] = {
+                    "x": _safe_int(self.entry_pos_a_x, self.config.get("pos_a", {}).get("x", 2119)),
+                    "y": _safe_int(self.entry_pos_a_y, self.config.get("pos_a", {}).get("y", 571)),
+                }
+            if hasattr(self, "entry_pos_b_x") and hasattr(self, "entry_pos_b_y"):
+                self.config["pos_b"] = {
+                    "x": _safe_int(self.entry_pos_b_x, self.config.get("pos_b", {}).get("x", 1194)),
+                    "y": _safe_int(self.entry_pos_b_y, self.config.get("pos_b", {}).get("y", 841)),
+                }
+            if hasattr(self, "entry_pos_c_x") and hasattr(self, "entry_pos_c_y"):
+                self.config["pos_c"] = {
+                    "x": _safe_int(self.entry_pos_c_x, self.config.get("pos_c", {}).get("x", 1612)),
+                    "y": _safe_int(self.entry_pos_c_y, self.config.get("pos_c", {}).get("y", 972)),
+                }
 
             # Smart OCR Coordinates
-            if hasattr(self, "entry_ocr_sell_x"):
-                self.config["ocr_pos_sell"] = {"x": int(self.entry_ocr_sell_x.get()), "y": int(self.entry_ocr_sell_y.get())}
-                self.config["ocr_price_box"] = {
-                    "x1": int(self.entry_box_x1.get()),
-                    "y1": int(self.entry_box_y1.get()),
-                    "x2": int(self.entry_box_x2.get()),
-                    "y2": int(self.entry_box_y2.get()),
+            if hasattr(self, "entry_ocr_sell_x") and hasattr(self, "entry_ocr_sell_y"):
+                self.config["ocr_pos_sell"] = {
+                    "x": _safe_int(self.entry_ocr_sell_x, self.config.get("ocr_pos_sell", {}).get("x", 2119)),
+                    "y": _safe_int(self.entry_ocr_sell_y, self.config.get("ocr_pos_sell", {}).get("y", 571)),
                 }
-                self.config["ocr_price_input"] = {"x": int(self.entry_ocr_input_x.get()), "y": int(self.entry_ocr_input_y.get())}
-                self.config["ocr_create_order"] = {"x": int(self.entry_ocr_create_x.get()), "y": int(self.entry_ocr_create_y.get())}
+            if hasattr(self, "entry_box_x1") and hasattr(self, "entry_box_y1") and hasattr(self, "entry_box_x2") and hasattr(self, "entry_box_y2"):
+                self.config["ocr_price_box"] = {
+                    "x1": _safe_int(self.entry_box_x1, self.config.get("ocr_price_box", {}).get("x1", 1150)),
+                    "y1": _safe_int(self.entry_box_y1, self.config.get("ocr_price_box", {}).get("y1", 420)),
+                    "x2": _safe_int(self.entry_box_x2, self.config.get("ocr_price_box", {}).get("x2", 1300)),
+                    "y2": _safe_int(self.entry_box_y2, self.config.get("ocr_price_box", {}).get("y2", 455)),
+                }
+            if hasattr(self, "entry_ocr_input_x") and hasattr(self, "entry_ocr_input_y"):
+                self.config["ocr_price_input"] = {
+                    "x": _safe_int(self.entry_ocr_input_x, self.config.get("ocr_price_input", {}).get("x", 1250)),
+                    "y": _safe_int(self.entry_ocr_input_y, self.config.get("ocr_price_input", {}).get("y", 841)),
+                }
+            if hasattr(self, "entry_ocr_create_x") and hasattr(self, "entry_ocr_create_y"):
+                self.config["ocr_create_order"] = {
+                    "x": _safe_int(self.entry_ocr_create_x, self.config.get("ocr_create_order", {}).get("x", 1612)),
+                    "y": _safe_int(self.entry_ocr_create_y, self.config.get("ocr_create_order", {}).get("y", 972)),
+                }
 
             # Strategy & Pricing
             if hasattr(self, "entry_discount"):
-                try:
-                    disc_str = self.entry_discount.get().replace("%", "").strip()
-                    self.config["discount_percent"] = float(disc_str) if disc_str else 1.0
-                except ValueError:
-                    pass
+                self.config["discount_percent"] = _safe_float(self.entry_discount, self.config.get("discount_percent", 1.0))
             if hasattr(self, "entry_floor_price"):
-                try:
-                    self.config["floor_price"] = int(self.entry_floor_price.get().strip() or 0)
-                except ValueError:
-                    pass
+                self.config["floor_price"] = _safe_int(self.entry_floor_price, self.config.get("floor_price", 0))
 
+            # Hotkey
             if hasattr(self, "hotkey_menu"):
                 self.config["toggle_hotkey"] = self.hotkey_menu.get()
 
             # Timings
             if hasattr(self, "entry_delay_ab"):
-                self.config["delay_ab_ms"] = int(self.entry_delay_ab.get())
-                self.config["delay_bc_ms"] = int(self.entry_delay_bc.get())
-                self.config["delay_ca_ms"] = int(self.entry_delay_ca.get())
+                self.config["delay_ab_ms"] = max(50, _safe_int(self.entry_delay_ab, self.config.get("delay_ab_ms", 300)))
+            if hasattr(self, "entry_delay_bc"):
+                self.config["delay_bc_ms"] = max(50, _safe_int(self.entry_delay_bc, self.config.get("delay_bc_ms", 200)))
+            if hasattr(self, "entry_delay_ca"):
+                self.config["delay_ca_ms"] = max(100, _safe_int(self.entry_delay_ca, self.config.get("delay_ca_ms", 400)))
             if hasattr(self, "entry_delay_ocr"):
-                self.config["delay_ocr_ms"] = int(self.entry_delay_ocr.get())
+                self.config["delay_ocr_ms"] = max(50, _safe_int(self.entry_delay_ocr, self.config.get("delay_ocr_ms", 250)))
 
+
+            # Anti-Detection & Switches
             if hasattr(self, "switch_human_var"):
                 self.config["human_mouse"] = self.switch_human_var.get()
             if hasattr(self, "switch_type_var"):
@@ -183,15 +194,24 @@ class AlbionMarketAutoClickerApp:
             if hasattr(self, "switch_jitter_var"):
                 self.config["jitter"] = self.switch_jitter_var.get()
             if hasattr(self, "entry_max_items"):
-                self.config["max_items"] = int(self.entry_max_items.get())
+                self.config["max_items"] = max(0, _safe_int(self.entry_max_items, self.config.get("max_items", 0)))
+
+            # Tesseract Path
+            if hasattr(self, "entry_tesseract"):
+                self.config["tesseract_path"] = self.entry_tesseract.get().strip()
 
             self.config["language"] = self.lang
 
-            with open(self.CONFIG_FILE, "w", encoding="utf-8") as f:
+            # Atomic file save
+            tmp_file = self.CONFIG_FILE + ".tmp"
+            with open(tmp_file, "w", encoding="utf-8") as f:
                 json.dump(self.config, f, indent=4)
+            os.replace(tmp_file, self.CONFIG_FILE)
+
             self.log("💾 Config saved successfully.", category="Config")
         except Exception as e:
             self.log(f"⚠️ Error saving config: {e}", category="Error")
+
 
     def setup_ui(self):
         self.root.title(self.strings["app_title"])
