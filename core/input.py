@@ -85,3 +85,14 @@ def human_type(text: str, enabled: bool = True):
     for ch in text:
         pyautogui.write(ch)
         time.sleep(random.uniform(0.015, 0.040))
+
+
+def randomize_target_coordinate(x: int, y: int, radius: int = 3) -> tuple[int, int]:
+    """Applies subtle Gaussian radial offset (within radius pixels) to avoid clicking identical pixels."""
+    if radius <= 0:
+        return x, y
+    angle = random.uniform(0, 2 * math.pi)
+    r = random.gauss(0, radius / 2.0)
+    r = max(-radius, min(radius, r))
+    return int(round(x + r * math.cos(angle))), int(round(y + r * math.sin(angle)))
+

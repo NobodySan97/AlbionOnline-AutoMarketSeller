@@ -36,7 +36,9 @@ from core.input import (
     get_gaussian_delay,
     human_move_to,
     human_type,
+    randomize_target_coordinate,
 )
+
 from core.hotkey import (
     VK_KEY_MAP,
     is_key_pressed_win32,
@@ -78,6 +80,7 @@ __all__ = [
     "get_gaussian_delay",
     "human_move_to",
     "human_type",
+    "randomize_target_coordinate",
     "VK_KEY_MAP",
     "is_key_pressed_win32",
     "WindowsHotkeyPoller",

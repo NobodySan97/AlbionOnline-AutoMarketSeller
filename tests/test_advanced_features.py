@@ -144,3 +144,17 @@ def test_detect_tesseract_custom_path(tmp_path):
     detected = detect_tesseract_binary(str(fake_exe))
     assert detected == str(fake_exe)
 
+
+def test_randomize_target_coordinate():
+    from AutoSeller import randomize_target_coordinate
+    x, y = 500, 300
+    for _ in range(50):
+        rx, ry = randomize_target_coordinate(x, y, radius=4)
+        assert abs(rx - x) <= 4
+        assert abs(ry - y) <= 4
+
+    # Zero radius test
+    zx, zy = randomize_target_coordinate(x, y, radius=0)
+    assert (zx, zy) == (x, y)
+
+

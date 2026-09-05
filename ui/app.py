@@ -33,7 +33,7 @@ except ImportError:
     USE_CUSTOMTKINTER = False
 
 from core.timer import enable_high_res_timer, init_windows_dpi, async_beep
-from core.input import human_move_to, human_type, get_gaussian_delay
+from core.input import human_move_to, human_type, get_gaussian_delay, randomize_target_coordinate
 from core.hotkey import WindowsHotkeyPoller
 from core.pricing import calculate_target_price
 from core.ocr import OcrReader, detect_tesseract_binary
@@ -797,14 +797,57 @@ class AlbionMarketAutoClickerApp:
 
     # --- SETUP WIZARD & MOUSE CAPTURE ---
     def _stop_mouse_listener(self):
-        """Helper to cleanly stop and join any active mouse listener to release WH_MOUSE_LL hook."""
-        if self.mouse_listener is not None and self.mouse_listener.is_alive():
+        """Helper to cleanly stop and join any active mouse listener / hookless poller."""
+        if hasattr(self, "capture_stop_event") and self.capture_stop_event is not None:
+            self.capture_stop_event.set()
+        if hasattr(self, "capture_thread") and self.capture_thread is not None and self.capture_thread.is_alive():
+            try:
+                self.capture_thread.join(timeout=0.15)
+            except Exception:
+                pass
+        self.capture_thread = None
+
+        if hasattr(self, "mouse_listener") and self.mouse_listener is not None and self.mouse_listener.is_alive():
             try:
                 self.mouse_listener.stop()
                 self.mouse_listener.join(timeout=0.25)
             except Exception:
                 pass
         self.mouse_listener = None
+
+    def _start_capture_listener(self):
+        """Starts hookless click polling on Windows (GetAsyncKeyState 0x01) or fallback to pynput on non-Windows."""
+        self._stop_mouse_listener()
+        if sys.platform == "win32":
+            self.capture_stop_event = threading.Event()
+            self.capture_thread = threading.Thread(target=self._win32_click_poll_worker, daemon=True)
+            self.capture_thread.start()
+        else:
+            self.mouse_listener = mouse.Listener(on_click=self._on_mouse_click)
+            self.mouse_listener.start()
+
+    def _win32_click_poll_worker(self):
+        """Zero-hook click capture using native Win32 GetAsyncKeyState(VK_LBUTTON).
+        Does not install any WH_MOUSE_LL system hook!
+        """
+        user32 = ctypes.windll.user32
+        # Debounce: wait until left mouse button is released first
+        while not self.capture_stop_event.is_set() and (user32.GetAsyncKeyState(0x01) & 0x8000):
+            time.sleep(0.02)
+
+        while not self.capture_stop_event.is_set():
+            time.sleep(0.015)
+            try:
+                if user32.GetAsyncKeyState(0x01) & 0x8000:
+                    pos = pyautogui.position()
+                    keep_going = self._on_mouse_click(pos[0], pos[1], mouse.Button.left, True)
+                    # Wait until left button is released
+                    while not self.capture_stop_event.is_set() and (user32.GetAsyncKeyState(0x01) & 0x8000):
+                        time.sleep(0.02)
+                    if keep_going is False:
+                        break
+            except Exception:
+                break
 
     def start_setup_wizard(self):
         if self.is_running:
@@ -813,10 +856,7 @@ class AlbionMarketAutoClickerApp:
         self.single_capture_target = None
         self.btn_wizard.configure(text=f"Wizard: Step 1/3 (Click 'Sell')", fg_color="#e67e22")
         self.log(self.strings["wizard_step_1"], category="Wizard")
-
-        self._stop_mouse_listener()
-        self.mouse_listener = mouse.Listener(on_click=self._on_mouse_click)
-        self.mouse_listener.start()
+        self._start_capture_listener()
 
     def start_ocr_wizard(self):
         if self.is_running:
@@ -825,10 +865,7 @@ class AlbionMarketAutoClickerApp:
         self.single_capture_target = None
         self.btn_wizard_ocr.configure(text="Wizard OCR: 1/4 Click 'Sell'", fg_color="#e67e22")
         self.log("[Wizard OCR] Passo 1/4: Fai click sul tasto 'Sell' dell'oggetto in inventario", category="Wizard")
-
-        self._stop_mouse_listener()
-        self.mouse_listener = mouse.Listener(on_click=self._on_mouse_click)
-        self.mouse_listener.start()
+        self._start_capture_listener()
 
     def start_single_capture(self, target_name: str):
         if self.is_running:
@@ -836,10 +873,7 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 0
         self.single_capture_target = target_name
         self.log(self.strings["capture_single"].format(target_name), category="Capture")
-
-        self._stop_mouse_listener()
-        self.mouse_listener = mouse.Listener(on_click=self._on_mouse_click)
-        self.mouse_listener.start()
+        self._start_capture_listener()
 
     def start_area_capture(self):
         if self.is_running:
@@ -847,10 +881,8 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 101  # Top-Left point
         self.area_p1 = None
         self.log("[Cattura Area] Fai click nell'angolo in ALTO A SINISTRA dell'area prezzo...", category="Capture")
+        self._start_capture_listener()
 
-        self._stop_mouse_listener()
-        self.mouse_listener = mouse.Listener(on_click=self._on_mouse_click)
-        self.mouse_listener.start()
 
     def _on_mouse_click(self, x, y, button, pressed):
         if not pressed or button != mouse.Button.left:
@@ -1165,11 +1197,13 @@ class AlbionMarketAutoClickerApp:
             strategy_type = self.config.get("strategy", "percentage")
 
         cycle_count = 0
+        next_pause_threshold = random.randint(4, 7)
         while self.is_running and not self.worker_stop_event.is_set():
             try:
                 if mode == "3point":
                     # 1. Click Position A (Top Item 'Sell' Button)
-                    human_move_to(pos_a[0], pos_a[1], enabled=humanize)
+                    t_a = randomize_target_coordinate(pos_a[0], pos_a[1], radius=3 if jitter else 0)
+                    human_move_to(t_a[0], t_a[1], enabled=humanize)
                     if not self.is_running or self.worker_stop_event.is_set():
                         break
                     pyautogui.click()
@@ -1180,7 +1214,8 @@ class AlbionMarketAutoClickerApp:
                         break
 
                     # 2. Click Position B ([-] Undercut 1 Silver Button)
-                    human_move_to(pos_b[0], pos_b[1], enabled=humanize)
+                    t_b = randomize_target_coordinate(pos_b[0], pos_b[1], radius=3 if jitter else 0)
+                    human_move_to(t_b[0], t_b[1], enabled=humanize)
                     if not self.is_running or self.worker_stop_event.is_set():
                         break
                     pyautogui.click()
@@ -1190,7 +1225,8 @@ class AlbionMarketAutoClickerApp:
                         break
 
                     # 3. Click Position C ('Create' Sell Order Button)
-                    human_move_to(pos_c[0], pos_c[1], enabled=humanize)
+                    t_c = randomize_target_coordinate(pos_c[0], pos_c[1], radius=3 if jitter else 0)
+                    human_move_to(t_c[0], t_c[1], enabled=humanize)
                     if not self.is_running or self.worker_stop_event.is_set():
                         break
                     pyautogui.click()
@@ -1202,7 +1238,8 @@ class AlbionMarketAutoClickerApp:
                 else:
                     # SMART OCR MODE
                     # 1. Click Sell on top item
-                    human_move_to(pos_sell[0], pos_sell[1], enabled=humanize)
+                    t_sell = randomize_target_coordinate(pos_sell[0], pos_sell[1], radius=3 if jitter else 0)
+                    human_move_to(t_sell[0], t_sell[1], enabled=humanize)
                     if not self.is_running or self.worker_stop_event.is_set():
                         break
                     pyautogui.click()
@@ -1250,7 +1287,8 @@ class AlbionMarketAutoClickerApp:
                         continue
 
                     # 4. Click Price Input Field -> Clear -> Type Target Price
-                    human_move_to(pos_input[0], pos_input[1], enabled=humanize)
+                    t_inp = randomize_target_coordinate(pos_input[0], pos_input[1], radius=3 if jitter else 0)
+                    human_move_to(t_inp[0], t_inp[1], enabled=humanize)
                     if not self.is_running or self.worker_stop_event.is_set():
                         break
                     pyautogui.click()
@@ -1271,7 +1309,8 @@ class AlbionMarketAutoClickerApp:
                         break
 
                     # 5. Click Create Order Button
-                    human_move_to(pos_create[0], pos_create[1], enabled=humanize)
+                    t_crt = randomize_target_coordinate(pos_create[0], pos_create[1], radius=3 if jitter else 0)
+                    human_move_to(t_crt[0], t_crt[1], enabled=humanize)
                     if not self.is_running or self.worker_stop_event.is_set():
                         break
                     pyautogui.click()
@@ -1290,6 +1329,15 @@ class AlbionMarketAutoClickerApp:
                 d_ca = get_gaussian_delay(delay_ca * 0.85, delay_ca * 1.15) if jitter else delay_ca
                 if self.worker_stop_event.wait(d_ca):
                     break
+
+                # Natural human micro-pause every 4-7 items
+                if jitter and cycle_count > 0 and (cycle_count % next_pause_threshold == 0):
+                    pause_dur = random.uniform(1.8, 3.8)
+                    self.root.after(0, lambda d=pause_dur: self.log(f"Pausa naturale: {d:.1f}s prima del prossimo lotto...", category="Pacing"))
+                    if self.worker_stop_event.wait(pause_dur):
+                        break
+                    next_pause_threshold = random.randint(4, 7)
+
 
             except pyautogui.FailSafeException:
                 self.root.after(0, self.stop_clicking)

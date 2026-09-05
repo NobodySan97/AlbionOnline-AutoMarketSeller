@@ -4,8 +4,8 @@ Multilingual strings dictionary for Market Seller GUI.
 
 STRINGS = {
     "en": {
-        "app_title": "Market Seller — Auto Clicker & Smart OCR",
-        "header_title": "MARKET SELLER AUTO CLICKER",
+        "app_title": "Albion Market Assistant",
+        "header_title": "ALBION MARKET ASSISTANT",
         "tab_positions": "Positions & Controls",
         "tab_mode_fast": "⚡ Undercut -1 Silver",
         "tab_mode_ocr": "🧠 % Discount (Smart OCR)",
@@ -86,8 +86,8 @@ STRINGS = {
         },
     },
     "it": {
-        "app_title": "Market Seller — Auto Clicker & Smart OCR",
-        "header_title": "MARKET SELLER AUTO CLICKER",
+        "app_title": "Albion Market Assistant",
+        "header_title": "ALBION MARKET ASSISTANT",
         "tab_positions": "Posizioni & Controlli",
         "tab_mode_fast": "⚡ Undercut -1 Silver",
         "tab_mode_ocr": "🧠 Sconto % (Smart OCR)",
