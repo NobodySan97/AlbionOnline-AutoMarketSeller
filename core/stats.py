@@ -59,9 +59,10 @@ class SessionStats:
 
     def export_csv(self, filepath: str):
         with self.lock:
-            with open(filepath, "w", newline="", encoding="utf-8") as f:
-                writer = csv.DictWriter(
-                    f, fieldnames=["timestamp", "item", "price", "strategy", "reason", "diff_percent"]
-                )
-                writer.writeheader()
-                writer.writerows(list(self.records))
+            snapshot = list(self.records)
+        with open(filepath, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f, fieldnames=["timestamp", "item", "price", "strategy", "reason", "diff_percent"]
+            )
+            writer.writeheader()
+            writer.writerows(snapshot)

@@ -137,7 +137,6 @@ STRINGS = {
         "ocr_read_fail": "❌ Impossibile leggere il prezzo dall'area indicata.",
         "ocr_below_floor": "⚠️ Prezzo rilevato ({:,}) inferiore al prezzo minimo ({:,}). Oggetto protetto!",
         "ocr_sold": "[Ciclo #{}] Rilevato: {:,} -> Venduto a {:,} Silver ({})",
-        "switch_human_type": "Digitazione Umana Naturale",
         "label_tesseract": "Eseguibile Tesseract:",
         "btn_browse_tesseract": "📁 Sfoglia...",
         "btn_detect_tesseract": "🔍 Rileva Automaticamente",

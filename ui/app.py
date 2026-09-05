@@ -41,7 +41,10 @@ from core.stats import SessionStats
 from core.config import DEFAULT_CONFIG, deep_merge_config
 from ui.strings import STRINGS
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if getattr(sys, "frozen", False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
 os.makedirs(TEMPLATES_DIR, exist_ok=True)
 
@@ -1291,7 +1294,7 @@ class AlbionMarketAutoClickerApp:
         # Join worker thread before destroying UI to prevent calls on dead widgets
         if self.worker_thread is not None and self.worker_thread.is_alive():
             try:
-                self.worker_thread.join(timeout=0.4)
+                self.worker_thread.join(timeout=0.8)
             except Exception:
                 pass
 

@@ -94,5 +94,10 @@ class WindowsHotkeyPoller:
             except Exception:
                 pass
 
-    def stop(self):
+    def stop(self, timeout: float = 0.1):
         self.running = False
+        if hasattr(self, "thread") and self.thread.is_alive():
+            try:
+                self.thread.join(timeout=timeout)
+            except Exception:
+                pass
