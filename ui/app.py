@@ -52,6 +52,104 @@ os.makedirs(TEMPLATES_DIR, exist_ok=True)
 init_windows_dpi()
 enable_high_res_timer()
 
+class WizardHudOverlay:
+    """Semi-transparent topmost floating HUD overlay displayed on top of the game
+    showing live step-by-step click guidance during setup wizards.
+    Zero DirectX/DLL hooking — 100% native and safe.
+    """
+
+    def __init__(self, root):
+        self.root = root
+        self.window = None
+        self.lbl_title = None
+        self.lbl_instruction = None
+
+    def show(self, title: str, instruction: str, color: str = "#e67e22"):
+        def _build():
+            try:
+                if self.window is None or not self.window.winfo_exists():
+                    self.window = tk.Toplevel(self.root)
+                    self.window.title("Albion Assistant HUD")
+                    self.window.overrideredirect(True)
+                    self.window.attributes("-topmost", True)
+                    try:
+                        self.window.attributes("-alpha", 0.93)
+                    except Exception:
+                        pass
+                    self.window.configure(bg="#14161d")
+
+                    screen_w = self.window.winfo_screenwidth()
+                    w, h = 640, 72
+                    x = (screen_w - w) // 2
+                    y = 20
+                    self.window.geometry(f"{w}x{h}+{x}+{y}")
+
+                    self.border_frame = tk.Frame(
+                        self.window, bg="#14161d", highlightbackground=color, highlightthickness=2
+                    )
+                    self.border_frame.pack(fill="both", expand=True)
+
+                    self.lbl_title = tk.Label(
+                        self.border_frame,
+                        text=title,
+                        font=("Segoe UI", 10, "bold"),
+                        fg=color,
+                        bg="#14161d",
+                    )
+                    self.lbl_title.pack(pady=(5, 1))
+
+                    self.lbl_instruction = tk.Label(
+                        self.border_frame,
+                        text=instruction,
+                        font=("Segoe UI", 12, "bold"),
+                        fg="#ffffff",
+                        bg="#14161d",
+                    )
+                    self.lbl_instruction.pack(pady=(0, 5))
+                else:
+                    self.border_frame.configure(highlightbackground=color)
+                    self.lbl_title.configure(text=title, fg=color)
+                    self.lbl_instruction.configure(text=instruction)
+                    self.window.lift()
+            except Exception:
+                pass
+
+        if hasattr(self.root, "after"):
+            if threading.current_thread() is threading.main_thread():
+                _build()
+            else:
+                try:
+                    self.root.after(0, _build)
+                except Exception:
+                    pass
+
+    def dismiss(self, delay_ms: int = 0):
+        def _close():
+            if self.window and self.window.winfo_exists():
+                try:
+                    self.window.destroy()
+                except Exception:
+                    pass
+            self.window = None
+
+        if hasattr(self.root, "after"):
+            if delay_ms > 0:
+                try:
+                    self.root.after(delay_ms, _close)
+                except Exception:
+                    _close()
+            else:
+                if threading.current_thread() is threading.main_thread():
+                    _close()
+                else:
+                    try:
+                        self.root.after(0, _close)
+                    except Exception:
+                        pass
+        else:
+            _close()
+
+
 class AlbionMarketAutoClickerApp:
     CONFIG_FILE = os.path.join(BASE_DIR, "auto_config.json")
 
@@ -60,12 +158,15 @@ class AlbionMarketAutoClickerApp:
         self.lang = "it"
         self.strings = STRINGS[self.lang]
         self.stats = SessionStats()
+        self.hud_overlay = WizardHudOverlay(self.root)
 
         # State flags
         self.is_running = False
         self.worker_thread = None
         self.worker_stop_event = threading.Event()
         self.mouse_listener = None
+        if hasattr(self, "hud_overlay"):
+            self.hud_overlay.dismiss()
         self.wizard_step = 0
         self.single_capture_target = None
         self.area_p1 = None
@@ -834,6 +935,8 @@ class AlbionMarketAutoClickerApp:
             except Exception:
                 pass
         self.mouse_listener = None
+        if hasattr(self, "hud_overlay"):
+            self.hud_overlay.dismiss()
 
     def _start_capture_listener(self):
         """Starts hookless click polling on Windows (GetAsyncKeyState 0x01) or fallback to pynput on non-Windows."""
@@ -876,6 +979,7 @@ class AlbionMarketAutoClickerApp:
         self.single_capture_target = None
         self.btn_wizard.configure(text=f"Wizard: Step 1/3 (Click 'Sell')", fg_color="#e67e22")
         self.log(self.strings["wizard_step_1"], category="Wizard")
+        self.hud_overlay.show(self.strings["hud_wizard_title"], self.strings["hud_wizard_step_1"], color="#e67e22")
         self._start_capture_listener()
 
     def start_ocr_wizard(self):
@@ -885,6 +989,7 @@ class AlbionMarketAutoClickerApp:
         self.single_capture_target = None
         self.btn_wizard_ocr.configure(text="Wizard OCR: 1/4 Click 'Sell'", fg_color="#e67e22")
         self.log("[Wizard OCR] Passo 1/4: Fai click sul tasto 'Sell' dell'oggetto in inventario", category="Wizard")
+        self.hud_overlay.show(self.strings["hud_ocr_wizard_title"], self.strings["hud_ocr_step_1"], color="#e67e22")
         self._start_capture_listener()
 
     def start_single_capture(self, target_name: str):
@@ -893,6 +998,7 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 0
         self.single_capture_target = target_name
         self.log(self.strings["capture_single"].format(target_name), category="Capture")
+        self.hud_overlay.show(self.strings["hud_capture_title"], self.strings["hud_capture_instruction"].format(target_name), color="#e67e22")
         self._start_capture_listener()
 
     def start_area_capture(self):
@@ -901,6 +1007,7 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 101  # Top-Left point
         self.area_p1 = None
         self.log("[Cattura Area] Fai click nell'angolo in ALTO A SINISTRA dell'area prezzo...", category="Capture")
+        self.hud_overlay.show(self.strings["hud_capture_title"], self.strings["hud_ocr_step_box_p1"], color="#1abc9c")
         self._start_capture_listener()
 
 
@@ -913,6 +1020,7 @@ class AlbionMarketAutoClickerApp:
             self.area_p1 = (int(x), int(y))
             self.wizard_step = 102
             self.root.after(0, lambda: self.log(f"[Cattura Area] Punto 1: ({int(x)}, {int(y)}). Ora fai click in BASSO A DESTRA...", category="Capture"))
+            self.hud_overlay.show(self.strings["hud_capture_title"], self.strings["hud_ocr_step_box_p2"], color="#1abc9c")
             return
         elif self.wizard_step == 102:
             p1 = self.area_p1
@@ -944,6 +1052,7 @@ class AlbionMarketAutoClickerApp:
             self.area_p1 = (int(x), int(y))
             self.wizard_step = 13
             self.root.after(0, lambda: self.log("[Wizard OCR] Area P1 impostato. Ora click in BASSO A DESTRA dell'area prezzo...", category="Wizard"))
+            self.hud_overlay.show(self.strings["hud_ocr_wizard_title"], self.strings["hud_ocr_step_box_p2"], color="#1abc9c")
         elif self.wizard_step == 13:
             p1 = self.area_p1
             p2 = (int(x), int(y))
@@ -951,6 +1060,7 @@ class AlbionMarketAutoClickerApp:
             self.wizard_step = 14
             self.btn_wizard_ocr.configure(text="Wizard OCR: 3/4 Click 'Input Prezzo'", fg_color="#e67e22")
             self.root.after(0, lambda: self.log("[Wizard OCR] Passo 3/4: Fai click sul campo input del prezzo...", category="Wizard"))
+            self.hud_overlay.show(self.strings["hud_ocr_wizard_title"], self.strings["hud_ocr_step_input"], color="#3498db")
         elif self.wizard_step == 14:
             self.root.after(0, lambda: self._apply_ocr_step_input(int(x), int(y)))
         elif self.wizard_step == 15:
@@ -969,6 +1079,7 @@ class AlbionMarketAutoClickerApp:
         self.entry_box_y2.delete(0, "end")
         self.entry_box_y2.insert(0, str(y2))
         self.log(f"[Area Prezzo] Impostata: ({x1}, {y1}) -> ({x2}, {y2})", category="Capture")
+        self.hud_overlay.dismiss()
         self.save_config()
 
     def _apply_single_capture(self, target: str, x: int, y: int):
@@ -1004,6 +1115,7 @@ class AlbionMarketAutoClickerApp:
             self.entry_ocr_create_y.insert(0, str(y))
 
         self.log(self.strings["capture_done"].format(target, x, y), category="Capture")
+        self.hud_overlay.dismiss()
         self.save_config()
 
     def _apply_wizard_step_1(self, x: int, y: int):
@@ -1015,6 +1127,7 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 2
         self.btn_wizard.configure(text="Wizard: Step 2/3 (Click '[-]')", fg_color="#e67e22")
         self.log(self.strings["wizard_step_2"], category="Wizard")
+        self.hud_overlay.show(self.strings["hud_wizard_title"], self.strings["hud_wizard_step_2"], color="#3498db")
 
     def _apply_wizard_step_2(self, x: int, y: int):
         self.entry_pos_b_x.delete(0, "end")
@@ -1025,6 +1138,7 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 3
         self.btn_wizard.configure(text="Wizard: Step 3/3 (Click 'Create')", fg_color="#e67e22")
         self.log(self.strings["wizard_step_3"], category="Wizard")
+        self.hud_overlay.show(self.strings["hud_wizard_title"], self.strings["hud_wizard_step_3"], color="#9b59b6")
 
     def _apply_wizard_step_3(self, x: int, y: int):
         self.entry_pos_c_x.delete(0, "end")
@@ -1035,6 +1149,8 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 0
         self.btn_wizard.configure(text=self.strings["btn_wizard"], fg_color="#8e44ad")
         self.log(self.strings["wizard_complete"], category="Wizard")
+        self.hud_overlay.show(self.strings["hud_wizard_title"], self.strings["hud_wizard_complete"], color="#2ecc71")
+        self.hud_overlay.dismiss(delay_ms=2200)
         self.save_config()
 
     def _apply_ocr_step_1(self, x: int, y: int):
@@ -1045,6 +1161,7 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 12
         self.btn_wizard_ocr.configure(text="Wizard OCR: 2/4 Click Area Prezzo", fg_color="#e67e22")
         self.log("[Wizard OCR] Passo 2/4: Fai click in ALTO A SINISTRA dell'area prezzo...", category="Wizard")
+        self.hud_overlay.show(self.strings["hud_ocr_wizard_title"], self.strings["hud_ocr_step_box_p1"], color="#1abc9c")
 
     def _apply_ocr_step_input(self, x: int, y: int):
         self.entry_ocr_input_x.delete(0, "end")
@@ -1054,6 +1171,7 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 15
         self.btn_wizard_ocr.configure(text="Wizard OCR: 4/4 Click 'Create'", fg_color="#e67e22")
         self.log("[Wizard OCR] Passo 4/4: Fai click sul pulsante 'Create' per confermare l'ordine...", category="Wizard")
+        self.hud_overlay.show(self.strings["hud_ocr_wizard_title"], self.strings["hud_ocr_step_create"], color="#9b59b6")
 
     def _apply_ocr_step_create(self, x: int, y: int):
         self.entry_ocr_create_x.delete(0, "end")
@@ -1063,6 +1181,8 @@ class AlbionMarketAutoClickerApp:
         self.wizard_step = 0
         self.btn_wizard_ocr.configure(text=self.strings["btn_wizard_ocr"], fg_color="#8e44ad")
         self.log("✅ [Wizard OCR] Calibrazione completata con successo! Pronto per l'avvio.", category="Wizard")
+        self.hud_overlay.show(self.strings["hud_ocr_wizard_title"], self.strings["hud_ocr_complete"], color="#2ecc71")
+        self.hud_overlay.dismiss(delay_ms=2200)
         self.save_config()
 
     def test_click_position(self, target: str):
