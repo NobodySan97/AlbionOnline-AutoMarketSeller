@@ -195,11 +195,11 @@ class AlbionMarketAutoClickerApp:
 
     def setup_ui(self):
         self.root.title(self.strings["app_title"])
-        self.root.geometry("660x780")
-        self.root.minsize(620, 720)
+        self.root.geometry("680x820")
+        self.root.minsize(640, 750)
 
         # Header Frame with Title & Language
-        header = ctk.CTkFrame(self.root, fg_color="#1a1c23", corner_radius=0, height=65)
+        header = ctk.CTkFrame(self.root, fg_color="#1a1c23", corner_radius=0, height=60)
         header.pack(fill="x")
         header.pack_propagate(False)
 
@@ -230,41 +230,32 @@ class AlbionMarketAutoClickerApp:
             font=ctk.CTkFont(size=20, weight="bold"),
             fg_color="#2ecc71",
             hover_color="#27ae60",
-            height=50,
+            height=48,
             command=self.toggle_clicking,
         )
-        self.btn_toggle.pack(fill="x", padx=15, pady=(12, 8))
+        self.btn_toggle.pack(fill="x", padx=15, pady=(10, 6))
 
-        # Main Tabview
-        self.tabview = ctk.CTkTabview(self.root)
-        self.tabview.pack(fill="both", expand=True, padx=15, pady=(0, 15))
+        # Main Tabview with 3 Dedicated Tabs
+        self.tabview = ctk.CTkTabview(self.root, command=self.on_tab_changed)
+        self.tabview.pack(fill="both", expand=True, padx=15, pady=(0, 4))
 
-        self.tab_ctrl = self.tabview.add(self.strings["tab_positions"])
+        self.tab_fast = self.tabview.add(self.strings["tab_mode_fast"])
+        self.tab_ocr = self.tabview.add(self.strings["tab_mode_ocr"])
         self.tab_settings = self.tabview.add(self.strings["tab_settings"])
 
-        # ================= TAB 1: POSITIONS & CONTROLS =================
-        # Mode Selector (Segmented Button)
-        self.mode_var = ctk.StringVar(value=self.config.get("mode", "3point"))
-        mode_val = self.strings["mode_3point"] if self.mode_var.get() == "3point" else self.strings["mode_ocr"]
-
-        self.mode_selector = ctk.CTkSegmentedButton(
-            self.tab_ctrl,
-            values=[self.strings["mode_3point"], self.strings["mode_ocr"]],
-            command=self.on_change_mode,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            selected_color="#2980b9",
-            selected_hover_color="#1f618d",
-            height=36,
+        # ================= TAB 1: ⚡ UNDERCUT -1 SILVER (NATIVO) =================
+        lbl_fast_info = ctk.CTkLabel(
+            self.tab_fast,
+            text=self.strings["banner_mode_fast"],
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#3498db",
+            wraplength=600,
         )
-        self.mode_selector.set(mode_val)
-        self.mode_selector.pack(fill="x", padx=10, pady=(6, 8))
-
-        # --- FRAME 1: 3-POINT MODE CONTROLS ---
-        self.frame_3point = ctk.CTkFrame(self.tab_ctrl, fg_color="transparent")
+        lbl_fast_info.pack(fill="x", padx=10, pady=(4, 6))
 
         # 3-Point Wizard Button
         self.btn_wizard = ctk.CTkButton(
-            self.frame_3point,
+            self.tab_fast,
             text=self.strings["btn_wizard"],
             font=ctk.CTkFont(size=13, weight="bold"),
             fg_color="#8e44ad",
@@ -272,11 +263,11 @@ class AlbionMarketAutoClickerApp:
             height=32,
             command=self.start_setup_wizard,
         )
-        self.btn_wizard.pack(fill="x", padx=0, pady=(0, 8))
+        self.btn_wizard.pack(fill="x", padx=10, pady=(0, 6))
 
         # Pos A Row
-        frame_pos_a = ctk.CTkFrame(self.frame_3point, fg_color="transparent")
-        frame_pos_a.pack(fill="x", pady=2)
+        frame_pos_a = ctk.CTkFrame(self.tab_fast, fg_color="transparent")
+        frame_pos_a.pack(fill="x", padx=10, pady=2)
         ctk.CTkLabel(frame_pos_a, text=f"{self.strings['label_pos_a']} (Sell):", width=95, anchor="w").pack(side="left")
         ctk.CTkLabel(frame_pos_a, text="X:").pack(side="left", padx=(5, 2))
         self.entry_pos_a_x = ctk.CTkEntry(frame_pos_a, width=60)
@@ -294,8 +285,8 @@ class AlbionMarketAutoClickerApp:
         ).pack(side="right")
 
         # Pos B Row
-        frame_pos_b = ctk.CTkFrame(self.frame_3point, fg_color="transparent")
-        frame_pos_b.pack(fill="x", pady=2)
+        frame_pos_b = ctk.CTkFrame(self.tab_fast, fg_color="transparent")
+        frame_pos_b.pack(fill="x", padx=10, pady=2)
         ctk.CTkLabel(frame_pos_b, text=f"{self.strings['label_pos_b']} ([-]):", width=95, anchor="w").pack(side="left")
         ctk.CTkLabel(frame_pos_b, text="X:").pack(side="left", padx=(5, 2))
         self.entry_pos_b_x = ctk.CTkEntry(frame_pos_b, width=60)
@@ -313,8 +304,8 @@ class AlbionMarketAutoClickerApp:
         ).pack(side="right")
 
         # Pos C Row
-        frame_pos_c = ctk.CTkFrame(self.frame_3point, fg_color="transparent")
-        frame_pos_c.pack(fill="x", pady=2)
+        frame_pos_c = ctk.CTkFrame(self.tab_fast, fg_color="transparent")
+        frame_pos_c.pack(fill="x", padx=10, pady=2)
         ctk.CTkLabel(frame_pos_c, text=f"{self.strings['label_pos_c']} (Create):", width=95, anchor="w").pack(side="left")
         ctk.CTkLabel(frame_pos_c, text="X:").pack(side="left", padx=(5, 2))
         self.entry_pos_c_x = ctk.CTkEntry(frame_pos_c, width=60)
@@ -331,12 +322,54 @@ class AlbionMarketAutoClickerApp:
             frame_pos_c, text=self.strings["btn_test"], width=55, command=lambda: self.test_click_position("Pos C"), fg_color="#7f8c8d"
         ).pack(side="right")
 
-        # --- FRAME 2: SMART OCR CONTROLS ---
-        self.frame_ocr = ctk.CTkFrame(self.tab_ctrl, fg_color="transparent")
+        # Delays for Fast Mode
+        card_timing_fast = ctk.CTkFrame(self.tab_fast, fg_color="#21252d", corner_radius=6)
+        card_timing_fast.pack(fill="x", padx=10, pady=(8, 4))
+        lbl_sec_timing_fast = ctk.CTkLabel(
+            card_timing_fast,
+            text=self.strings["section_timing_fast"],
+            font=ctk.CTkFont(size=13, weight="bold"),
+        )
+        lbl_sec_timing_fast.pack(anchor="w", padx=10, pady=(6, 2))
+
+        # Delay A->B
+        frame_dab = ctk.CTkFrame(card_timing_fast, fg_color="transparent")
+        frame_dab.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(frame_dab, text=self.strings["label_delay_ab"]).pack(side="left")
+        self.entry_delay_ab = ctk.CTkEntry(frame_dab, width=70)
+        self.entry_delay_ab.insert(0, str(self.config.get("delay_ab_ms", 300)))
+        self.entry_delay_ab.pack(side="right")
+
+        # Delay B->C
+        frame_dbc = ctk.CTkFrame(card_timing_fast, fg_color="transparent")
+        frame_dbc.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(frame_dbc, text=self.strings["label_delay_bc"]).pack(side="left")
+        self.entry_delay_bc = ctk.CTkEntry(frame_dbc, width=70)
+        self.entry_delay_bc.insert(0, str(self.config.get("delay_bc_ms", 200)))
+        self.entry_delay_bc.pack(side="right")
+
+        # Delay C->A
+        frame_dca = ctk.CTkFrame(card_timing_fast, fg_color="transparent")
+        frame_dca.pack(fill="x", padx=10, pady=2)
+        ctk.CTkLabel(frame_dca, text=self.strings["label_delay_ca"]).pack(side="left")
+        self.entry_delay_ca = ctk.CTkEntry(frame_dca, width=70)
+        self.entry_delay_ca.insert(0, str(self.config.get("delay_ca_ms", 400)))
+        self.entry_delay_ca.pack(side="right")
+
+
+        # ================= TAB 2: 🧠 SCONTO % (SMART OCR) =================
+        lbl_ocr_info = ctk.CTkLabel(
+            self.tab_ocr,
+            text=self.strings["banner_mode_ocr"],
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#1abc9c",
+            wraplength=600,
+        )
+        lbl_ocr_info.pack(fill="x", padx=10, pady=(4, 6))
 
         # OCR Wizard Button
         self.btn_wizard_ocr = ctk.CTkButton(
-            self.frame_ocr,
+            self.tab_ocr,
             text=self.strings["btn_wizard_ocr"],
             font=ctk.CTkFont(size=13, weight="bold"),
             fg_color="#8e44ad",
@@ -344,11 +377,11 @@ class AlbionMarketAutoClickerApp:
             height=32,
             command=self.start_ocr_wizard,
         )
-        self.btn_wizard_ocr.pack(fill="x", padx=0, pady=(0, 6))
+        self.btn_wizard_ocr.pack(fill="x", padx=10, pady=(0, 6))
 
         # Pos Sell (Item)
-        f_ocr_sell = ctk.CTkFrame(self.frame_ocr, fg_color="transparent")
-        f_ocr_sell.pack(fill="x", pady=2)
+        f_ocr_sell = ctk.CTkFrame(self.tab_ocr, fg_color="transparent")
+        f_ocr_sell.pack(fill="x", padx=10, pady=2)
         ctk.CTkLabel(f_ocr_sell, text=f"{self.strings['label_pos_sell']}:", width=110, anchor="w").pack(side="left")
         ctk.CTkLabel(f_ocr_sell, text="X:").pack(side="left", padx=(4, 1))
         self.entry_ocr_sell_x = ctk.CTkEntry(f_ocr_sell, width=55)
@@ -362,8 +395,8 @@ class AlbionMarketAutoClickerApp:
         ctk.CTkButton(f_ocr_sell, text=self.strings["btn_test"], width=50, command=lambda: self.test_click_position("OCR Sell"), fg_color="#7f8c8d").pack(side="right")
 
         # Area Prezzo (OCR Box)
-        f_ocr_box = ctk.CTkFrame(self.frame_ocr, fg_color="transparent")
-        f_ocr_box.pack(fill="x", pady=2)
+        f_ocr_box = ctk.CTkFrame(self.tab_ocr, fg_color="transparent")
+        f_ocr_box.pack(fill="x", padx=10, pady=2)
         ctk.CTkLabel(f_ocr_box, text=f"{self.strings['label_price_box']}:", width=110, anchor="w").pack(side="left")
         ctk.CTkLabel(f_ocr_box, text="X1:").pack(side="left", padx=(2, 1))
         self.entry_box_x1 = ctk.CTkEntry(f_ocr_box, width=42)
@@ -386,8 +419,8 @@ class AlbionMarketAutoClickerApp:
         ctk.CTkButton(f_ocr_box, text=self.strings["btn_test_ocr"], width=75, command=self.test_ocr_recognition, fg_color="#16a085").pack(side="right")
 
         # Pos Input Field
-        f_ocr_inp = ctk.CTkFrame(self.frame_ocr, fg_color="transparent")
-        f_ocr_inp.pack(fill="x", pady=2)
+        f_ocr_inp = ctk.CTkFrame(self.tab_ocr, fg_color="transparent")
+        f_ocr_inp.pack(fill="x", padx=10, pady=2)
         ctk.CTkLabel(f_ocr_inp, text=f"{self.strings['label_price_input']}:", width=110, anchor="w").pack(side="left")
         ctk.CTkLabel(f_ocr_inp, text="X:").pack(side="left", padx=(4, 1))
         self.entry_ocr_input_x = ctk.CTkEntry(f_ocr_inp, width=55)
@@ -401,8 +434,8 @@ class AlbionMarketAutoClickerApp:
         ctk.CTkButton(f_ocr_inp, text=self.strings["btn_test"], width=50, command=lambda: self.test_click_position("OCR Input"), fg_color="#7f8c8d").pack(side="right")
 
         # Pos Create Order Button
-        f_ocr_crt = ctk.CTkFrame(self.frame_ocr, fg_color="transparent")
-        f_ocr_crt.pack(fill="x", pady=2)
+        f_ocr_crt = ctk.CTkFrame(self.tab_ocr, fg_color="transparent")
+        f_ocr_crt.pack(fill="x", padx=10, pady=2)
         ctk.CTkLabel(f_ocr_crt, text=f"{self.strings['label_create_order']}:", width=110, anchor="w").pack(side="left")
         ctk.CTkLabel(f_ocr_crt, text="X:").pack(side="left", padx=(4, 1))
         self.entry_ocr_create_x = ctk.CTkEntry(f_ocr_crt, width=55)
@@ -416,8 +449,8 @@ class AlbionMarketAutoClickerApp:
         ctk.CTkButton(f_ocr_crt, text=self.strings["btn_test"], width=50, command=lambda: self.test_click_position("OCR Create"), fg_color="#7f8c8d").pack(side="right")
 
         # Pricing & Discount Section Card
-        card_pricing = ctk.CTkFrame(self.frame_ocr, fg_color="#21252d", corner_radius=6)
-        card_pricing.pack(fill="x", pady=(6, 4), padx=2)
+        card_pricing = ctk.CTkFrame(self.tab_ocr, fg_color="#21252d", corner_radius=6)
+        card_pricing.pack(fill="x", pady=(6, 4), padx=10)
 
         f_disc = ctk.CTkFrame(card_pricing, fg_color="transparent")
         f_disc.pack(fill="x", padx=8, pady=(6, 2))
@@ -437,27 +470,18 @@ class AlbionMarketAutoClickerApp:
         self.slider_discount.set(self.config.get("discount_percent", 1.0))
         self.slider_discount.pack(fill="x", padx=8, pady=(2, 4))
 
-        # Quick Preset Buttons
+        # Quick Preset Buttons (Pure % Discounts)
         f_presets = ctk.CTkFrame(card_pricing, fg_color="transparent")
         f_presets.pack(fill="x", padx=8, pady=(2, 4))
         for p_val in [1.0, 2.0, 5.0, 10.0]:
             ctk.CTkButton(
                 f_presets,
                 text=f"{p_val:.0f}%",
-                width=45,
+                width=50,
                 height=24,
                 fg_color="#34495e",
                 command=lambda v=p_val: self.apply_preset_discount(v),
-            ).pack(side="left", padx=2)
-
-        ctk.CTkButton(
-            f_presets,
-            text="-1 Silver",
-            width=70,
-            height=24,
-            fg_color="#d35400",
-            command=lambda: self.apply_preset_discount("undercut_1"),
-        ).pack(side="left", padx=4)
+            ).pack(side="left", padx=3)
 
         # Floor Price
         f_floor = ctk.CTkFrame(card_pricing, fg_color="transparent")
@@ -467,19 +491,21 @@ class AlbionMarketAutoClickerApp:
         self.entry_floor_price.insert(0, str(self.config.get("floor_price", 0)))
         self.entry_floor_price.pack(side="right")
 
-        # Pack initial mode frame
-        if self.mode_var.get() == "ocr":
-            self.frame_ocr.pack(fill="x", padx=10, pady=(0, 4))
-        else:
-            self.frame_3point.pack(fill="x", padx=10, pady=(0, 4))
+        # Delay OCR Card
+        card_timing_ocr = ctk.CTkFrame(self.tab_ocr, fg_color="#21252d", corner_radius=6)
+        card_timing_ocr.pack(fill="x", padx=10, pady=(4, 4))
+        f_docr = ctk.CTkFrame(card_timing_ocr, fg_color="transparent")
+        f_docr.pack(fill="x", padx=8, pady=4)
+        ctk.CTkLabel(f_docr, text=self.strings["label_delay_ocr"]).pack(side="left")
+        self.entry_delay_ocr = ctk.CTkEntry(f_docr, width=70)
+        self.entry_delay_ocr.insert(0, str(self.config.get("delay_ocr_ms", 250)))
+        self.entry_delay_ocr.pack(side="right")
 
-        # Common Controls Frame
-        self.frame_controls = ctk.CTkFrame(self.tab_ctrl, fg_color="transparent")
-        self.frame_controls.pack(fill="both", expand=True, padx=10, pady=(4, 8))
 
-        # Section Controls / Hotkey
-        frame_hotkey = ctk.CTkFrame(self.frame_controls, fg_color="transparent")
-        frame_hotkey.pack(fill="x", pady=2)
+        # ================= TAB 3: ⚙️ IMPOSTAZIONI GLOBALI =================
+        # Hotkey Row
+        frame_hotkey = ctk.CTkFrame(self.tab_settings, fg_color="transparent")
+        frame_hotkey.pack(fill="x", padx=15, pady=(10, 4))
         ctk.CTkLabel(frame_hotkey, text=self.strings["label_hotkey"], font=ctk.CTkFont(weight="bold")).pack(side="left")
         self.hotkey_menu = ctk.CTkOptionMenu(
             frame_hotkey,
@@ -490,64 +516,13 @@ class AlbionMarketAutoClickerApp:
         self.hotkey_menu.set(self.config.get("toggle_hotkey", "F10"))
         self.hotkey_menu.pack(side="right")
 
-        # Section Activity Log
-        lbl_sec_log = ctk.CTkLabel(
-            self.frame_controls,
-            text=self.strings["section_log"],
-            font=ctk.CTkFont(size=13, weight="bold"),
-        )
-        lbl_sec_log.pack(anchor="w", pady=(6, 2))
-
-        self.txt_log = ctk.CTkTextbox(self.frame_controls, font=("Consolas", 11), wrap="word")
-        self.txt_log.pack(fill="both", expand=True, pady=(0, 4))
-
-        # ================= TAB 2: SETTINGS =================
-        lbl_sec_timing = ctk.CTkLabel(
-            self.tab_settings,
-            text=self.strings["section_timing"],
-            font=ctk.CTkFont(size=14, weight="bold"),
-        )
-        lbl_sec_timing.pack(anchor="w", padx=15, pady=(10, 4))
-
-        # Delay A->B
-        frame_dab = ctk.CTkFrame(self.tab_settings, fg_color="transparent")
-        frame_dab.pack(fill="x", padx=15, pady=3)
-        ctk.CTkLabel(frame_dab, text=self.strings["label_delay_ab"]).pack(side="left")
-        self.entry_delay_ab = ctk.CTkEntry(frame_dab, width=80)
-        self.entry_delay_ab.insert(0, str(self.config.get("delay_ab_ms", 300)))
-        self.entry_delay_ab.pack(side="right")
-
-        # Delay B->C
-        frame_dbc = ctk.CTkFrame(self.tab_settings, fg_color="transparent")
-        frame_dbc.pack(fill="x", padx=15, pady=3)
-        ctk.CTkLabel(frame_dbc, text=self.strings["label_delay_bc"]).pack(side="left")
-        self.entry_delay_bc = ctk.CTkEntry(frame_dbc, width=80)
-        self.entry_delay_bc.insert(0, str(self.config.get("delay_bc_ms", 200)))
-        self.entry_delay_bc.pack(side="right")
-
-        # Delay C->A
-        frame_dca = ctk.CTkFrame(self.tab_settings, fg_color="transparent")
-        frame_dca.pack(fill="x", padx=15, pady=3)
-        ctk.CTkLabel(frame_dca, text=self.strings["label_delay_ca"]).pack(side="left")
-        self.entry_delay_ca = ctk.CTkEntry(frame_dca, width=80)
-        self.entry_delay_ca.insert(0, str(self.config.get("delay_ca_ms", 400)))
-        self.entry_delay_ca.pack(side="right")
-
-        # Delay OCR
-        frame_docr = ctk.CTkFrame(self.tab_settings, fg_color="transparent")
-        frame_docr.pack(fill="x", padx=15, pady=3)
-        ctk.CTkLabel(frame_docr, text=self.strings["label_delay_ocr"]).pack(side="left")
-        self.entry_delay_ocr = ctk.CTkEntry(frame_docr, width=80)
-        self.entry_delay_ocr.insert(0, str(self.config.get("delay_ocr_ms", 250)))
-        self.entry_delay_ocr.pack(side="right")
-
         # Anti-Detection
         lbl_sec_anti = ctk.CTkLabel(
             self.tab_settings,
             text=self.strings["section_antidetect"],
             font=ctk.CTkFont(size=14, weight="bold"),
         )
-        lbl_sec_anti.pack(anchor="w", padx=15, pady=(14, 4))
+        lbl_sec_anti.pack(anchor="w", padx=15, pady=(12, 4))
 
         self.switch_human_var = ctk.BooleanVar(value=self.config.get("human_mouse", True))
         self.switch_human = ctk.CTkSwitch(
@@ -604,8 +579,32 @@ class AlbionMarketAutoClickerApp:
             text=self.strings["btn_save_settings"],
             font=ctk.CTkFont(size=14, weight="bold"),
             command=self.save_config,
-            height=38,
-        ).pack(fill="x", padx=15, pady=20)
+            height=36,
+        ).pack(fill="x", padx=15, pady=(16, 8))
+
+        # ================= DOCKED BOTTOM LOG (ALWAYS VISIBLE) =================
+        frame_log = ctk.CTkFrame(self.root, fg_color="transparent")
+        frame_log.pack(fill="x", padx=15, pady=(0, 10))
+
+        lbl_sec_log = ctk.CTkLabel(
+            frame_log,
+            text=self.strings["section_log"],
+            font=ctk.CTkFont(size=12, weight="bold"),
+        )
+        lbl_sec_log.pack(anchor="w", pady=(0, 2))
+
+        self.txt_log = ctk.CTkTextbox(frame_log, height=135, font=("Consolas", 10), wrap="word")
+        self.txt_log.pack(fill="x", expand=False)
+
+        # Set initial tab according to config
+        init_mode = self.config.get("mode", "3point")
+        try:
+            if init_mode == "ocr":
+                self.tabview.set(self.strings["tab_mode_ocr"])
+            else:
+                self.tabview.set(self.strings["tab_mode_fast"])
+        except Exception:
+            pass
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -638,17 +637,31 @@ class AlbionMarketAutoClickerApp:
             except Exception:
                 pass
 
-    # --- MODE & SETTINGS SWITCHING ---
+    # --- TAB & MODE SWITCHING ---
+    def on_tab_changed(self):
+        selected = self.tabview.get()
+        if selected == self.strings["tab_mode_fast"]:
+            self.config["mode"] = "3point"
+            self.log(self.strings["mode_switched_fast"], category="Mode")
+            self.save_config()
+        elif selected == self.strings["tab_mode_ocr"]:
+            self.config["mode"] = "ocr"
+            self.log(self.strings["mode_switched_ocr"], category="Mode")
+            self.save_config()
+
     def on_change_mode(self, chosen_value: str):
-        if "3-Point" in chosen_value:
-            self.mode_var.set("3point")
-            self.frame_ocr.pack_forget()
-            self.frame_3point.pack(fill="x", padx=10, pady=(0, 4), before=self.frame_controls)
+        if "3-Point" in chosen_value or "Fast" in chosen_value or "Veloce" in chosen_value or "-1" in chosen_value:
+            self.config["mode"] = "3point"
+            try:
+                self.tabview.set(self.strings["tab_mode_fast"])
+            except Exception:
+                pass
         else:
-            self.mode_var.set("ocr")
-            self.frame_3point.pack_forget()
-            self.frame_ocr.pack(fill="x", padx=10, pady=(0, 4), before=self.frame_controls)
-        self.config["mode"] = self.mode_var.get()
+            self.config["mode"] = "ocr"
+            try:
+                self.tabview.set(self.strings["tab_mode_ocr"])
+            except Exception:
+                pass
         self.save_config()
 
     def on_slider_discount(self, val: float):
@@ -664,11 +677,12 @@ class AlbionMarketAutoClickerApp:
             if hasattr(self, "entry_discount"):
                 self.entry_discount.delete(0, "end")
                 self.entry_discount.insert(0, "-1 Silver")
-            self.log("Strategia impostata su: Sconto 1 Silver (Undercut-1)", category="Pricing")
+            self.log("Strategia: Sconto 1 Silver (Undercut-1)", category="Pricing")
         else:
             self.config["strategy"] = "percentage"
             self.config["discount_percent"] = float(val)
-            self.slider_discount.set(float(val))
+            if hasattr(self, "slider_discount"):
+                self.slider_discount.set(float(val))
             if hasattr(self, "entry_discount"):
                 self.entry_discount.delete(0, "end")
                 self.entry_discount.insert(0, f"{float(val):.1f}")
